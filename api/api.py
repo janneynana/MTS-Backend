@@ -668,10 +668,12 @@ def CreateTournament():
         with Session() as session:
             new_tournament = copyTournament(tournament)
             user = copyUser(User.query.get(uid))
-            teamScore = TeamScore(id=-1)
+            # teamScore = TeamScore(id=-1)
+            match = Match(id=-1)
+            session.add(match)
             session.add(user)
             session.add(new_tournament)
-            session.add(teamScore)
+            # session.add(teamScore)
             # session.add(current_user)
             session.commit()
         response["code"] = 0
@@ -777,16 +779,32 @@ def updateTeamRosterPlaintiff():
         session.commit()
     return jsonify({"code": 0, "msg": "success"})
 
-@app.route('/updateZoom', methods=["POST"])
-@cross_origin()
-def updateZoom():
-    args = request.get_json()
-    tournament_id = args["tournament_id"]
-    schedule_id = args["schedule_id"]
-    tournament = Tournament.query.get(tournament_id)
-    time = args["time"]
-    schedule = createMeetings(tournament, schedule_id, time)
-    return jsonify({"code": 0, "msg": "success", "schedule": schedule})
+# @app.route('/updateZoom', methods=["POST"])
+# @cross_origin()
+# def updateZoom():
+#     args = request.get_json()
+#     tournament_id = args["tournament_id"]
+#     schedule_id = args["schedule_id"]
+#     tournament = Tournament.query.get(tournament_id)
+#     time = args["time"]
+#     schedule = createMeetings(tournament, schedule_id, time)
+#     return jsonify({"code": 0, "msg": "success", "schedule": schedule})
+
+# @app.route('/changeJudgeAssignment', methods=["POST"])
+# @cross_origin()
+# def changeJudgeAssignment():
+#     args = request.get_json()
+#     tournament_id = args("tournament_id")
+#     new_match = args["new_match"]
+#     tournament = Tournament.query.get(tournament_id)
+#     changeJudge(tournament, new_match)
+    
+            
+
+# @app.route('/changeTeamAssignment', methods=["POST"])
+# @cross_origin()
+# def changeTeamAssignment():
+#     args = request.get_json()
         
 
 if __name__ == "__main__":

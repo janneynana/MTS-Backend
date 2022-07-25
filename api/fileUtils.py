@@ -134,6 +134,12 @@ def saveJudges(tournament, data):
                         judge.unpreferredTeams.append(team[0])
         session.commit()
         
+def duplicateScore(team):
+    team.trial_wins *= 2
+    team.ballots *= 2
+    team.total_points *= 2
+    team.point_differential *= 2
+        
 def saveScores(tournament, data, round_num):
     print(round_num, type(round_num))
     engine = create_engine(tournament.db_url)
@@ -152,17 +158,24 @@ def saveScores(tournament, data, round_num):
         for team in teams:
             if team.id in bye_team_ids:
                 if round_num == 2:
-                    team.round2_score_id = team.round1_score_id
+                    # team.round2_score_id = team.round1_score_id
+                    duplicateScore(team)
                 continue
+            if team.rounds_participated:
+                team.rounds_participated.append(round_num)
+            else:
+                team.rounds_participated = [round_num]
+            flag_modified(team, "rounds_participated")
+            if round_num == 2 and team.round1_score_id == -1:
+                duplicateScore(team)
             team_dict[team.team_name] = team
             teamScore = TeamScore(team_id=team.id, trial_wins=0, ballots=0, total_points=0, point_differential=0)
-            session.add(teamScore)
-            # team.score = teamScore
+            # session.add(teamScore)
             team_score_dic[team.id] = teamScore
-        session.commit()
-        for team in teams:
-            if team.id not in bye_team_ids:
-                assignScore(team, team_score_dic[team.id], round_num)
+        # session.commit()
+        # for team in teams:
+        #     if team.id not in bye_team_ids:
+        #         assignScore(team, team_score_dic[team.id], round_num)
         for index, row in data.iterrows():
             match_id = row["courtroom"]
             match = matches[match_id]
@@ -185,14 +198,16 @@ def saveScores(tournament, data, round_num):
             match.scoreSheets.append(scoreSheet)
             plaintiff_score = team_score_dic[plaintiff.id]
             defense_score = team_score_dic[defense.id]
-            # plaintiff_score = plaintiff.score
-            # defense_score = defense.score
+            plaintiff.total_points += plaintiff_total
+            defense.total_points += defense_total
             plaintiff_score.total_points += plaintiff_total
             defense_score.total_points += defense_total
             if defense_result.lower() == "Win".lower():
+                defense.ballots += 1
                 defense_score.ballots += 1
                 scoreSheet.ballot = defense.id
             else:
+                plaintiff.ballots += 1
                 plaintiff_score.ballots += 1
                 scoreSheet.ballot = plaintiff.id
             session.add(scoreSheet)
@@ -204,17 +219,23 @@ def saveScores(tournament, data, round_num):
             scoreSheets = match.scoreSheets
             if len(scoreSheets) == 2:
                 plaintiff_new_score = round((scoreSheets[0].plaintiff_score + scoreSheets[1].plaintiff_score)/2)
-                defense_new_score = round((scoreSheets[0].plaintiff_score + scoreSheets[1].plaintiff_score)/2)
+                defense_new_score = round((scoreSheets[0].defense_score + scoreSheets[1].defense_score)/2)
                 if plaintiff_new_score > defense_new_score:
                     plaintiff_score.ballots += 1
+                    plaintiff.ballots += 1
                 else:
+                    defense.ballots += 1
                     defense_score.ballots += 1
             plaintiff_score.point_differential = plaintiff_score.total_points - defense_score.total_points
             defense_score.point_differential = defense_score.total_points - plaintiff_score.total_points
+            match.teams[0].point_differential = defense_score.point_differential
+            match.teams[1].point_differential = plaintiff_score.point_differential
             if plaintiff_score.ballots > defense_score.ballots:
+                match.teams[1].trial_wins += 1
                 plaintiff_score.trial_wins += 1
                 match.winner_team = match.team_names[1]
             else:
+                match.teams[0].trial_wins += 1
                 defense_score.trial_wins += 1
                 match.winner_team = match.team_names[0]
             flag_modified(match, "team_names")
@@ -225,21 +246,25 @@ def saveScores(tournament, data, round_num):
 def assignScore(team, score, round_num):
     if round_num == 1:
         team.round1_score_id = score.id
-        # team.round1_score = score
-        # print(team.team_name, team.round1_score_id)
     elif round_num == 2:
         team.round2_score_id = score.id
-        # team.round2_score = score
+        # if team.round1_score_id != -1:
+        #     return team.round1_score
+        # else:
+        #     return None
     elif round_num == 3:
         team.round3_score_id = score.id
+        # return team.round2_score
         # team.round3_score = score
         # print(team.team_name, team.round3_score_id)
     elif round_num == 4:
         team.round4_score_id = score.id
+        # return team.round3_score
         # team.round4_score = score
     elif round_num == 5:
         # team.round5_score = score
         team.round5_score_id = score.id
+        # return team.round4_score
         
 def removeTeams(tournament, wild):
     engine = create_engine(tournament.db_url)

@@ -9,11 +9,8 @@ from sqlalchemy.orm.attributes import flag_modified
 
 # from .models import *
 # from .Database import *
-# from .schedules import *
 from models import *
 from Database import *
-from schedules import *
-
 
 # Enter your API key and your API secret
 API_KEY = 'I3L5b4rMSgWRkLH9gEwxNA'
@@ -43,31 +40,29 @@ def generateToken():
 # send a request with headers including
 # a token and meeting details
 
-def createMeetings(tournament, schedule_id, new_time):
-    engine = create_engine(tournament.db_url)
-    Session = sessionmaker(engine)
-    with Session() as session:
-        schedule = session.query(Schedule).get(schedule_id)
-        schedule.time = new_time
-        matches = schedule.matches
-        for match in matches:
-            match.time = new_time
-            if match.zoom_id:
-                deleteMeeting(match.zoom_id)
-            id, link, pwd = createMeeting(new_time, match)
-            match.zoom_id = id
-            match.zoom_link = link
-        session.commit()
-        formatted_schedule = getSchedule(tournament, schedule.round_id, schedule.region)
-    return formatted_schedule
+# def createMeetings(tournament, schedule_id):
+#     engine = create_engine(tournament.db_url)
+#     Session = sessionmaker(engine)
+#     with Session() as session:
+#         schedule = session.query(Schedule).get(schedule_id)
+#         matches = schedule.matches
+#         for match in matches:
+#             if match.zoom_id:
+#                 deleteMeeting(match.zoom_id)
+#             id, link, pwd = createMeeting(match)
+#             match.zoom_id = id
+#             match.zoom_link = link
+#         session.commit()
+#         formatted_schedule = getSchedule(tournament, schedule.round_id, schedule.region)
+#     return formatted_schedule
             
     
 
-def createMeeting(time, match):
+def createMeeting(match):
     # create json data for post requests
     meetingdetails = {"topic": "MockTrial Courtroom " + str(match.id),
 				"type": 2,
-				"start_time": time,
+				"start_time": match.time,
 				"duration": "120",
 				"timezone": "UTC",
 				"agenda": "test",
@@ -104,7 +99,7 @@ def createMeeting(time, match):
 	# 	f'\nzoom meeting link {join_URL}\
 	# 	\npassword: "{meetingPassword}"\n')
     
-    return meeting_id, join_URL, meetingPassword
+    return meeting_id, join_URL
  
 def deleteMeeting(id):
     headers = {'authorization': 'Bearer ' + generateToken(),

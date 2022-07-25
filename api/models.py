@@ -1,8 +1,6 @@
-from ast import For, Str
-from dataclasses import field
-from email.policy import default
 import json
 from math import fabs
+from multiprocessing.dummy import Array
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import ARRAY, Float, ForeignKey, Column, Integer, PickleType, String, Boolean, DateTime, Table
 from sqlalchemy.orm import declarative_base, relationship
@@ -106,11 +104,16 @@ class Team(db.Model):
     opponent_ids = Column(ARRAY(Integer)) # ids of the oponent teams the team has met
     # preferred_judge_ids = Column(ARRAY(Integer))
     # preferred_judge_ids = Column(ARRAY(Integer))
-    round1_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1) # -1 means no score yet
-    round2_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1)
-    round3_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1)
-    round4_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1)
-    round5_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1)
+    trial_wins = Column(Float, default=0.0)
+    ballots = Column(Float, default=0.0)
+    total_points = Column(Float, default=0.0)
+    point_differential = Column(Float, default=0.0)
+    rounds_participated = Column(ARRAY(Integer))
+    # round1_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1) # -1 means no score yet
+    # round2_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1)
+    # round3_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1)
+    # round4_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1)
+    # round5_score_id = Column(Integer, ForeignKey("team_score.id"), default=-1)
     
     # relationship
     # defense_match = relationship('Match', foreign_keys='Match.defense_team_id', backref='defense_team', lazy=True)
@@ -145,11 +148,11 @@ class TeamScore(db.Model):
     point_differential = Column(Float, default=0.0)
     
     # relationship
-    round1 = relationship('Team', foreign_keys='Team.round1_score_id', backref='round1_score', lazy=True)
-    round2 = relationship('Team', foreign_keys='Team.round2_score_id', backref='round2_score', lazy=True)
-    round3 = relationship('Team', foreign_keys='Team.round3_score_id', backref='round3_score', lazy=True)
-    round4 = relationship('Team', foreign_keys='Team.round4_score_id', backref='round4_score', lazy=True)
-    round5 = relationship('Team', foreign_keys='Team.round5_score_id', backref='round5_score', lazy=True)
+    # round1 = relationship('Team', foreign_keys='Team.round1_score_id', backref='round1_score', lazy=True)
+    # round2 = relationship('Team', foreign_keys='Team.round2_score_id', backref='round2_score', lazy=True)
+    # round3 = relationship('Team', foreign_keys='Team.round3_score_id', backref='round3_score', lazy=True)
+    # round4 = relationship('Team', foreign_keys='Team.round4_score_id', backref='round4_score', lazy=True)
+    # round5 = relationship('Team', foreign_keys='Team.round5_score_id', backref='round5_score', lazy=True)
     
     def add(self, score):
         self.trial_wins += score.trial_wins
