@@ -14,14 +14,6 @@ from flask_cors import CORS, cross_origin
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt, get_jwt_identity, unset_jwt_cookies, jwt_required
 
-# from .Account import *
-# from .Password import *
-# from .models import *
-# from .config import Config
-# from .Database import Database
-# from .fileUtils import *
-# from .schedules import *
-# from .Zoom import *
 from Account import *
 from Password import *
 from models import *
