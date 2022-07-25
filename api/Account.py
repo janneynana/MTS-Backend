@@ -31,11 +31,11 @@ class Account:
 
     def initialize(self):
         connection = psycopg2.connect(
-            host=${{secrets.HOST}},
-            database=${{secrets.DATABASE}},
-            user=${{secrets.USEER}},
-            password=${{secrets.PASSWORD}},
-            port=${{secrets.PORT}},
+            host="ibf-mst-cs407.postgres.database.azure.com",
+            database="postgres",
+            user="cs407",
+            password="IBF-MTS-pwd",
+            port=5432,
             sslmode="require"
         )
         print("Connection established")
