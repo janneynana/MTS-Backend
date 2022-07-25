@@ -60,4 +60,4 @@ jobs:
         with:
           app-name: 'IBF-MTS-backend'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_9B0F3961A5F0414DBBE61DE35BC6F4A4 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_69D3E1D82EC84B30860C6B12AA241574 }}
