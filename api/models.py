@@ -65,6 +65,7 @@ class Tournament(db.Model):
         fields["regions"] = self.regions
         fields["team_uploaded"] = self.team_uploaded
         fields["judge_uploaded"] = self.judge_uploaded
+        fields["wild_uploaded"] = self.wild_uploaded
         fields["current_round"] = self.current_round
         return fields
         

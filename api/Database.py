@@ -1,8 +1,7 @@
 import os
 from datetime import date
 from sqlalchemy_utils import database_exists, create_database, drop_database
-# from .config import Config
-from config import Config
+from .config import Config
 
 class Database():
     DEFAULT = 'postgresql+psycopg2://{dbuser}:{dbpass}@{dbhost}/{dbname}?sslmode=require'.format(
@@ -46,13 +45,6 @@ class Database():
     @staticmethod
     def getWildFolder(tournament):
         path = os.path.join(Database.getTournamentFolder(tournament), "WildTeam")
-        if not os.path.exists(path):
-            os.makedirs(path)
-        return path
-    
-    @staticmethod
-    def getTeamFolder(tournament):
-        path = os.path.join(Database.getTournamentFolder(tournament), "Team")
         if not os.path.exists(path):
             os.makedirs(path)
         return path

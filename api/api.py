@@ -6,23 +6,23 @@ import os
 import shutil
 from unicodedata import name
 from urllib import response
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 from flask import Flask, jsonify, session, request
+from flask_jwt_extended import JWTManager, create_access_token, get_jwt, get_jwt_identity, unset_jwt_cookies, jwt_required
 from flask_cors import CORS, cross_origin
 from flask_migrate import Migrate
-from flask_jwt_extended import JWTManager, create_access_token, get_jwt, get_jwt_identity, unset_jwt_cookies, jwt_required
 
-from Account import *
-from Password import *
-from models import *
-from config import Config
-from Database import Database
-from fileUtils import *
-from schedules import *
-from Zoom import *
-
+from .Account import *
+from .Password import *
+from .models import *
+from .config import Config
+from .Database import Database
+from .fileUtils import *
+from .schedules import *
+from .Zoom import *
+from .Match import *
 
 def create_app(config):
     app = Flask(__name__)
@@ -276,7 +276,7 @@ def UpdateAccount():
 @cross_origin()
 def uploadteam():
     tournament_id = int(request.form.get("tournament_id"))
-    wild = request.form.get("wild")
+    wild = int(request.form.get("wild"))
     tournament = Tournament.query.get(tournament_id)
     if 'File' not in request.files:
         print('No file part')
@@ -298,6 +298,7 @@ def uploadteam():
                 except OSError as e:
                     print("Error: %s : %s" % (path, e.strerror))
                     return jsonify({"code": -3, "msg": "Error removing the folder"})
+            path = Database.getTeamFolder(tournament)
             filename = os.path.join(path, file.filename)
         else:
             path = Database.getWildFolder(tournament)
@@ -308,9 +309,11 @@ def uploadteam():
                 except OSError as e:
                     print("Error: %s : %s" % (path, e.strerror))
                     return jsonify({"code": -3, "msg": "Error removing the folder"})
+            path = Database.getWildFolder(tournament)
             filename = os.path.join(path, file.filename)
         file.save(filename)
         wrong_wild_teams, missed_columns = checkInputTeams(tournament, filename, wild)
+        print(tournament.to_dict())
         response = {}
         if wrong_wild_teams:
             response["wrong wild"] = 1
@@ -401,7 +404,7 @@ def getTournaments():
     # uid = get_jwt_identity()
     # head admin, all tournaments - deleted: false
     user = User.query.get(uid)
-    if user.role.lower() == "Head".lower():
+    if user.role.lower() == "Head".lower() or user.role.lower() == "root".lower():
         tournaments = Tournament.query.filter(Tournament.deleted == False)
     else:
         # tournaments = Tournament.query.filter(Tournament.deleted == False, Tournament.region == user.region)
@@ -462,12 +465,17 @@ def getRounds():
 def getRegions():
     print("Getting regions")
     args = request.get_json()
+    print(args)
     tournament_id = args["tournament_id"]
+    round_id = int(args["round_id"])
     # round_num = args["round_num"]
     tournament = Tournament.query.get(tournament_id)
     response = {}
     response["tournament"] = tournament.to_dict()
-    response["regions"] = tournament.regions
+    if round_id >= 4:
+        response["regions"] = ["StateWide"]
+    else:
+        response["regions"] = tournament.regions
     response["code"] = 0
     return jsonify(response)
 
@@ -528,7 +536,7 @@ def getScores():
 def sort_teams():
     args = request.get_json()
     tournament_id = args["tournament_id"]
-    round_num = args["round_num"]
+    round_num = int(args["round_num"])
     tournament = Tournament.query.get(tournament_id)
     if round_num >= 4:
         region = "StateWide"
@@ -543,7 +551,7 @@ def sort_teams():
 def sort_teams_by_role():
     args = request.get_json()
     tournament_id = args["tournament_id"]
-    round_num = args["round_num"]
+    round_num = int(args["round_num"])
     tournament = Tournament.query.get(tournament_id)
     if round_num >= 4:
         region = "StateWide"
@@ -558,7 +566,7 @@ def sort_teams_by_role():
 def createschedules():
     args = request.get_json()
     tournament_id = args["tournament_id"]
-    round_num = args["round_num"]
+    round_num = int(args["round_num"])
     tournament = Tournament.query.get(tournament_id)
     schedules = createSchedules(tournament, round_num)
     return jsonify({"code": 0, "msg": "success", "schedules": schedules})
@@ -614,6 +622,13 @@ def DeleteTournament():
     args = request.get_json()
     tournament_id = args["tournament_id"]
     tournament = Tournament.query.get(tournament_id)
+    engine = create_engine(tournament.db_url)
+    Session = sessionmaker(engine)
+    with Session() as session:
+        matches = session.query(Match).all()
+        for match in matches:
+            if match.id != -1 and match.zoom_id:
+                deleteMeeting(match.zoom_id)
     Database.delete_tournament_db(tournament)
     path = Database.getTournamentFolder(tournament)
     try:

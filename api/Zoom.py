@@ -7,10 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 
-# from .models import *
-# from .Database import *
-from models import *
-from Database import *
+from .models import *
+from .Database import *
+
 
 # Enter your API key and your API secret
 API_KEY = 'I3L5b4rMSgWRkLH9gEwxNA'
@@ -62,7 +61,7 @@ def createMeeting(match):
     # create json data for post requests
     meetingdetails = {"topic": "MockTrial Courtroom " + str(match.id),
 				"type": 2,
-				"start_time": match.time,
+				# "start_time": match.time,
 				"duration": "120",
 				"timezone": "UTC",
 				"agenda": "test",
@@ -91,22 +90,31 @@ def createMeeting(match):
     
     # print("\n creating zoom meeting ... \n")
     y = json.loads(r.text)
-    # print(y)
-    join_URL = y["join_url"]
-    meeting_id = y["id"]
-    meetingPassword = y["password"]
+    meeting_id = None
+    join_URL = None
+    try:
+        join_URL = y["join_url"]
+        meeting_id = y["id"]
+        # meetingPassword = y["password"]
+        return True, meeting_id, join_URL
+    except:
+        print(y)
+    return False, meeting_id, join_URL
     # print(
 	# 	f'\nzoom meeting link {join_URL}\
 	# 	\npassword: "{meetingPassword}"\n')
+ 
     
-    return meeting_id, join_URL
  
 def deleteMeeting(id):
     headers = {'authorization': 'Bearer ' + generateToken(),
 			'content-type': 'application/json'}
-    response = requests.delete(
-		f'https://api.zoom.us/v2/meetings/{id}',
-		headers=headers)
+    try:
+        response = requests.delete(
+			f'https://api.zoom.us/v2/meetings/{id}',
+			headers=headers)
+    except:
+        print(response)
 	
 
 # run the create meeting function
