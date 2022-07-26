@@ -67,8 +67,9 @@ def saveTeams(tournament, data, wild):
     Session = sessionmaker(engine)
     with Session() as session:
         m_tournament = session.query(Tournament).get(tournament.id)
-        m_tournament.regions = regions
-        tournament.regions = regions # save to default database
+        if wild == 0:
+            m_tournament.regions = regions
+            tournament.regions = regions # save to default database
         # flag_modified(tournament, "regions")
         for index, row in data.iterrows():
             team_name = row["team"]
