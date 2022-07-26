@@ -490,7 +490,10 @@ def getTeams():
     engine = create_engine(tournament.db_url)
     Session = sessionmaker(engine)
     with Session() as session:
-        teams = session.query(Team).all()
+        teams = session.query(Team).filter(Team.wild == 0).all()
+        wild = session.query(Team).filter(Team.wild == 1).all()
+        if wild:
+            teams.extend(wild)
         response["teams"] = [team.to_dict() for team in teams]
     response["code"] = 0
     return jsonify(response)

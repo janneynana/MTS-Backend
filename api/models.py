@@ -137,6 +137,7 @@ class Team(db.Model):
         elif self.role == 1:
             fields["role"] = "Plaintiff"
         fields["members"] = self.members
+        fields["wild"] = self.wild
         return fields
 
 class TeamScore(db.Model):
