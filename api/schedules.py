@@ -4,9 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 
-from .models import *
-from .Database import *
-from .Zoom import *
+from models import *
+from Database import *
+from Zoom import *
 
 Round4_MATCH_SIZE = 14
 

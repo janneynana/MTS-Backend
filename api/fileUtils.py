@@ -6,8 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 
-from .models import *
-from .Database import *
+from models import *
+from Database import *
 
 
 def checkInputJudge(tournament, filename):
