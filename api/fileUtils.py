@@ -46,6 +46,7 @@ def checkInputTeams(tournament, filename, wild):
 
 def checkInputScore(tournament, filename, round_num):
     missed_colums = []
+    wrong_courtroom = -1
     dataset = pd.read_csv(filename, sep=',', header=0)
     dataset.columns = dataset.columns.str.lower()
     required_colums = ['courtroom', 'plaintiff school', "defense school", "plaintiff total", "defense total",
@@ -56,9 +57,11 @@ def checkInputScore(tournament, filename, round_num):
     
     if len(missed_colums) == 0:
         # save the scores
-        saveScores(tournament, dataset, round_num)
+        wrong_courtroom = saveScores(tournament, dataset, round_num)
+        if wrong_courtroom != -1:
+            return wrong_courtroom, missed_colums
         tournament.score_uploaded = 1
-    return missed_colums
+    return wrong_courtroom, missed_colums
 
 def saveTeams(tournament, data, wild):
     # regions, counts = np.unique(data["region"], return_counts=True)
@@ -193,7 +196,10 @@ def saveScores(tournament, data, round_num):
         #         assignScore(team, team_score_dic[team.id], round_num)
         for index, row in data.iterrows():
             match_id = row["courtroom"]
-            match = matches[match_id]
+            try:
+                match = matches[match_id]
+            except:
+                return match_id
             plaintiff = team_dict[row["plaintiff school"].lower()]
             defense = team_dict[row["defense school"].lower()]
             plaintiff_total = row["plaintiff total"]
@@ -292,6 +298,7 @@ def saveScores(tournament, data, round_num):
             calculate_round4_bye_teams_scores(bye_teams)
         m_round.status = 1
         session.commit()
+    return -1
 
     
 # def assignScore(team, score, round_num):

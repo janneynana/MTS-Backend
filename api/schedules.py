@@ -28,7 +28,7 @@ def createSchedules(tournament, next_round):
     return schedules
 
 def haveMet(team1, team2):
-    if team1.id in team2.opponent_ids:
+    if team2.opponent_ids and team1.id in team2.opponent_ids:
         return True
     else:
         return False
@@ -102,7 +102,7 @@ def getRound4Teams(teams, round3, round4, regions):
             wild_teams.append(team)
         elif team.rounds_participated and 3 in team.rounds_participated:
             round3_teams.append(team)
-        elif round3.bye_teams and team.id in round3.bye_teams:
+        elif round3.bye_teams and team.id in round3.bye_teams.values():
             round3_bye_teams[team.region] = team
     round3_teams.sort(key=lambda t: (t.trial_wins, 
                                       t.ballots,
@@ -111,14 +111,20 @@ def getRound4Teams(teams, round3, round4, regions):
     round4.bye_teams = {} # dictionary - region:team_id
     round4_bye_teams = [] # list of teams
     for region in regions:
-        region_teams = [team for team in teams if team.region.lower() == region.lower()]
+        if region not in round3.bye_teams.keys():
+            continue
+        region_teams = []
+        for team in round3_teams:
+            if team.region.lower() == region.lower():
+                region_teams.append(team)
+                # print(team.id, team.team_name, team.trial_wins, team.ballots, team.total_points, team.point_differential)
         # bye_team3 = [team for team in region_teams if team.id == round3.bye_teams[region]][0] # round 3 bye team of that region
         size = len(region_teams)
+        print("size", size)
         # need to select a bye team for round4
         bye_team4 = region_teams[size//2]
         print("bye_team4:", bye_team4.id, bye_team4.team_name)
         round4.bye_teams[region] = bye_team4.id
-        # round3_bye_teams[region] = bye_team3
     round4_defense_teams = [team for team in round3_teams if team.role == 1]
     round4_plaintiff_teams = [team for team in round3_teams if team.role == 0]
     end = min(len(round4_defense_teams), 12)
@@ -180,22 +186,6 @@ def findViablePlaintiff(defense_teams, plaintiff_teams, current_index):
         print("Unable to create Schedules")
         return "Unable to create Schedules"      
 
-def calculate_round4_bye_teams_scores(bye_teams, session):
-    for team in bye_teams:
-        if team.rounds_participated and 4 in team.rounds_participated:
-            continue
-        round_count = 0
-        if team.rounds_participated and 1 in team.rounds_participated:
-            round_count += 1
-        if team.rounds_participated and 2 in team.rounds_participated:
-            round_count += 1
-        if team.rounds_participated and 3 in team.rounds_participated:
-            round_count += 1
-        team.trial_wins += team.trial_wins/round_count 
-        team.ballots += team.ballots/round_count 
-        team.total_points += team.total_points/round_count 
-        team.point_differential += team.point_differential/round_count 
-
 def testing(tournament):
     engine = create_engine(tournament.db_url)
     Session = sessionmaker(engine)
@@ -225,7 +215,7 @@ def createRound1(tournament):
         for region in regions:
             schedule = Schedule(competition_name=region+" Regional Competition", region=region, round_id=1)
             session.add(schedule)
-            teams = session.query(Team).filter(Team.region.lower()==region.lower()).all()
+            teams = session.query(Team).filter(Team.region == region).all()
             size = len(teams)
             if size % 2 != 0:
                 # odd number of teams, will have a bye team
@@ -257,12 +247,12 @@ def createRound1(tournament):
         session.commit()
         round.bye_teams = bye_teams
         for match in matches:
-            if match.zoom_id:
-                deleteMeeting(match.zoom_id)
-            created, id, link = createMeeting(match)
-            if created:
-                match.zoom_id = id
-                match.zoom_link = link
+            # if match.zoom_id:
+            #     deleteMeeting(match.zoom_id)
+            # created, id, link = createMeeting(match)
+            # if created:
+            #     match.zoom_id = id
+            #     match.zoom_link = link
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)
@@ -296,11 +286,10 @@ def createRound2(tournament):
             #     Team.ballots.desc(),
             #     Team.total_points.desc(),
             #     Team.point_differential.desc()).all()
-            all_teams = session.query(Team).filter(Team.region.lower() == region.lower())
+            all_teams = session.query(Team).filter(Team.region == region)
             teams = []
             if round1.bye_teams and region in round1.bye_teams:
                 replace_team_id = round1.bye_teams[region]
-                
             for team in all_teams:
                 if replace_team_id and team.id == replace_team_id:
                     replace_team = team
@@ -361,12 +350,12 @@ def createRound2(tournament):
             # schedules[region] = formatSchedule(schedule, matches, session)
         session.commit()
         for match in matches:
-            if match.zoom_id:
-                deleteMeeting(match.zoom_id)
-            created, id, link = createMeeting(match)
-            if created:
-                match.zoom_id = id
-                match.zoom_link = link
+            # if match.zoom_id:
+            #     deleteMeeting(match.zoom_id)
+            # created, id, link = createMeeting(match)
+            # if created:
+            #     match.zoom_id = id
+            #     match.zoom_link = link
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)
@@ -395,27 +384,24 @@ def createRound3(tournament):
             schedule = Schedule(competition_name=region+" Regional Competition", region=region, round_id=3)
             session.add(schedule)
             session.commit()
-            all_teams = session.query(Team).filter(Team.region.lower() == region.lower()).all()
-            teams = []
-            size = len(all_teams)
+            teams = session.query(Team).filter(Team.region == region).all()
             bye_team1 = None
             bye_team2 = None
             bye_team_ids = []
-            for team in all_teams:
-                if round1.bye_teams and team.id == round1.bye_teams[region]:
+            for team in teams:
+                if round1.bye_teams and region in round1.bye_teams and team.id == round1.bye_teams[region]:
                     bye_team1 = team # bye_team in Round 1
                     bye_team_ids.append(team.id)
-                elif round2.bye_teams and team.id == round2.bye_teams[region]:
+                elif round2.bye_teams and region in round2.bye_teams and team.id == round2.bye_teams[region]:
                     bye_team2 = team # bye_team in Round 2
                     bye_team_ids.append(team.id)
-                elif team.rounds_participated and 2 in team.rounds_participated:
-                    teams.append(team)
             teams.sort(key=lambda t: (t.trial_wins, 
                                       t.ballots,
                                       t.total_points,
                                       t.point_differential), reverse=True)
             
-            if len(teams) % 2 != 0:
+            size = len(teams)
+            if size % 2 != 0:
                 bye_team = teams.pop() # The team in last place will have a bye in Round 3.
                 schedule.bye_team_id = bye_team.id
                 size -= 1
@@ -453,12 +439,12 @@ def createRound3(tournament):
             # schedules[region] = formatSchedule(schedule, matches, session)
         round.bye_teams = bye_teams
         for match in all_matches:
-            if match.zoom_id:
-                deleteMeeting(match.zoom_id)
-            created, id, link = createMeeting(match)
-            if created:
-                match.zoom_id = id
-                match.zoom_link = link
+            # if match.zoom_id:
+            #     deleteMeeting(match.zoom_id)
+            # created, id, link = createMeeting(match)
+            # if created:
+            #     match.zoom_id = id
+            #     match.zoom_link = link
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)   
@@ -531,12 +517,12 @@ def createStateFinal(tournament):
         # schedules[schedule.region] = formatSchedule(schedule, matches, session)
         session.commit()
         for match in matches:
-            if match.zoom_id:
-                deleteMeeting(match.zoom_id)
-            created, id, link = createMeeting(match)
-            if created:
-                match.zoom_id = id
-                match.zoom_link = link
+            # if match.zoom_id:
+            #     deleteMeeting(match.zoom_id)
+            # created, id, link = createMeeting(match)
+            # if created:
+            #     match.zoom_id = id
+            #     match.zoom_link = link
             assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
@@ -589,12 +575,12 @@ def createChampionshipTrial(tournament):
         session.add(match)
         assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
         session.commit()
-        if match.zoom_id:
-                deleteMeeting(match.zoom_id)
-        created, id, link = createMeeting(match)
-        if created:
-            match.zoom_id = id
-            match.zoom_link = link
+        # if match.zoom_id:
+        #         deleteMeeting(match.zoom_id)
+        # created, id, link = createMeeting(match)
+        # if created:
+        #     match.zoom_id = id
+        #     match.zoom_link = link
         teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
         session.add(teamRoster)

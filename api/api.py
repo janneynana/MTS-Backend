@@ -22,6 +22,7 @@ from Database import Database
 from fileUtils import *
 from schedules import *
 from Zoom import *
+from JudgeReassignment import *
 
 def create_app(config):
     app = Flask(__name__)
@@ -47,30 +48,6 @@ def init_db(app, db_url):
     
 app = create_app(Config)
 jwt = JWTManager(app)
-
-
-"""
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USE_TSL'] = False
-app.config['MAIL_USE_SSL'] = True
-app.config['MAIL_DEBUG'] = True
-app.config['MAIL_USERNAME'] = 'CS407MTS@gmail.com'
-app.config['MAIL_PASSWORD'] = 'cs407IBFMTS'
-mail = Mail(app)
-
-print("In here!")
-        str = ("Thank you for wanting to administer an IBF mock trial competition.\n\n"
-               "Here is your authentication code to sign up: TEMPCODE" #+ details[0] +
-               "\nTo create your account please go to: localhost:300/create_account.\n"
-               "Thank you,\n IBF Team")
-        msg = Message("Authentication Code", sender="CS407MTS@outlook.com", body=str, recipients=["szapodeanu19@gmail.com"])
-        print("2")
-        mail.send(msg)
-        print("3")
-        return "message"
-
-"""
 
 
 # The access_token should expire if an account has been inactive for an hour
@@ -104,6 +81,22 @@ def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
 @app.route("/")
 def index():
     return "Welcome to our MTS!"
+
+@app.route("/test")
+def test():
+    tournament = Tournament.query.get(96)
+    engine = create_engine(tournament.db_url)
+    Session = sessionmaker(engine)
+    with Session() as session:
+        round_num = 1
+        teams = session.query(Team).all()
+        round1_teams = []
+        for team in teams:
+            if team.rounds_participated and round_num in team.rounds_participated:
+                round1_teams.append(team)
+        response = {"teams": [team.to_dict() for team in teams]}
+        return jsonify(response)
+
 
 @app.route("/getUser")
 @jwt_required()
@@ -384,13 +377,16 @@ def uploadScore():
     if file:
         filename = os.path.join(Database.getRoundFolder(tournament, round_num), file.filename)
         file.save(filename)
-        missed_columns = checkInputScore(tournament, filename, round_num)
-        if len(missed_columns) == 0:
-            db.session.commit()
-            response = {"code": 0, "success": "file uploaded"}
+        wrong_courtroom, missed_columns = checkInputScore(tournament, filename, round_num)
+        if len(missed_columns) > 0:
+            response = {"code": -4, "error": "incorrect file format", "missed": missed_columns}
+            return jsonify(response)
+        elif wrong_courtroom != -1:
+            response = {"code": -5, "error": "courtroom not found", "wrong_courtroom": wrong_courtroom}
             return jsonify(response)
         else:
-            response = {"code": -4, "error": "incorrect file format", "missed": missed_columns}
+            db.session.commit()
+            response = {"code": 0, "success": "file uploaded"}
             return jsonify(response)
 
 
@@ -571,17 +567,6 @@ def createschedules():
     tournament = Tournament.query.get(tournament_id)
     schedules = createSchedules(tournament, round_num)
     return jsonify({"code": 0, "msg": "success", "schedules": schedules})
-
-
-@app.route('/test', methods=["POST"])
-@cross_origin()
-def test():
-    args = request.get_json()
-    data = args["data"]
-    print(type(data), data)
-    # tournament = Tournament.query.get(tournament_id)
-    # testing(tournament)
-    return jsonify({"code": 0, "msg": "success"})
 
 @app.route('/getSchedule', methods=["POST"])
 @cross_origin()
@@ -806,22 +791,15 @@ def updateTeamRosterPlaintiff():
 #     schedule = createMeetings(tournament, schedule_id, time)
 #     return jsonify({"code": 0, "msg": "success", "schedule": schedule})
 
-# @app.route('/changeJudgeAssignment', methods=["POST"])
-# @cross_origin()
-# def changeJudgeAssignment():
-#     args = request.get_json()
-#     tournament_id = args("tournament_id")
-#     new_match = args["new_match"]
-#     tournament = Tournament.query.get(tournament_id)
-#     changeJudge(tournament, new_match)
-    
-            
-
-# @app.route('/changeTeamAssignment', methods=["POST"])
-# @cross_origin()
-# def changeTeamAssignment():
-#     args = request.get_json()
-        
+@app.route('/changeJudgeAssignment', methods=["POST"])
+@cross_origin()
+def changeJudgeAssignment():
+    args = request.get_json()
+    tournament_id = args("tournament_id")
+    new_match = args["new_match"]
+    tournament = Tournament.query.get(tournament_id)
+    response = changeJudge(tournament, new_match)
+    return jsonify(response)
 
 if __name__ == "__main__":
     app.run(host="localhost", port=5000, debug=True)
