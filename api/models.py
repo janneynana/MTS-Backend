@@ -24,6 +24,8 @@ class User(db.Model):
     authCode = Column(String(100))
     region = Column(String(100))
     role = Column(String(100), default="admin") 
+    security_question = Column(String(200))
+    answer = Column(String(100))
     # tournaments = Column(ARRAY(String(100))) 
 
     # relationship
