@@ -46,16 +46,6 @@ def pairTeamsRound3(team1, team2, bye_team_ids, schedule):
     else:
         team1.role = random.choice([0, 1])
         team2.role = 1 - team1.role
-    if team1.opponent_ids:
-        team1.opponent_ids.append(team2.id)
-    else:
-        team1.opponent_ids = [team2.id]
-    if team2.opponent_ids:
-        team2.opponent_ids.append(team1.id)
-    else:
-        team2.opponent_ids = [team1.id]
-    flag_modified(team1, "opponent_ids")
-    flag_modified(team2, "opponent_ids")
     match = Match(round_id=3, schedule_id=schedule.id, team_ids=[team1.id, team2.id])
     if team1.role == 0:
         match.team_names = [team1.team_name, team2.team_name]
@@ -92,8 +82,6 @@ def handleRound3Exceptions(matches, team1, team2, bye_team_ids, schedule):
             # break the match and repair the teams
             team3 = match.teams[0]  # match.teams is assigned at line #83
             team4 = match.teams[1]
-            team3.opponent_ids.pop()
-            team4.opponent_ids.pop()
             if team3.id not in team1.opponent_ids:
                 matches[j] = pairTeamsRound3(team1, team3, bye_team_ids, schedule)
                 matches.append(pairTeamsRound3(team2, team4, bye_team_ids, schedule))
@@ -112,9 +100,9 @@ def getRound4Teams(teams, round3, round4, regions):
     for team in teams:
         if team.wild == 1:
             wild_teams.append(team)
-        elif team.id not in list(round3.bye_teams.values()):
+        elif team.rounds_participated and 3 in team.rounds_participated:
             round3_teams.append(team)
-        else:
+        elif round3.bye_teams and team.id in round3.bye_teams:
             round3_bye_teams[team.region] = team
     round3_teams.sort(key=lambda t: (t.trial_wins, 
                                       t.ballots,
@@ -123,9 +111,7 @@ def getRound4Teams(teams, round3, round4, regions):
     round4.bye_teams = {} # dictionary - region:team_id
     round4_bye_teams = [] # list of teams
     for region in regions:
-        if region not in round3.bye_teams.keys():
-            continue
-        region_teams = [team for team in teams if team.region == region]
+        region_teams = [team for team in teams if team.region.lower() == region.lower()]
         # bye_team3 = [team for team in region_teams if team.id == round3.bye_teams[region]][0] # round 3 bye team of that region
         size = len(region_teams)
         # need to select a bye team for round4
@@ -150,10 +136,10 @@ def getRound4Teams(teams, round3, round4, regions):
         defense_team = round4_defense_teams[i]
         plaintiff_team = round4_plaintiff_teams[i]
         if defense_team.id in round4.bye_teams.values():
-            round4_bye_teams.append((round4_defense_teams[i]))
+            round4_bye_teams.append(defense_team)
             round4_defense_teams[i] = round3_bye_teams[defense_team.region]
         if plaintiff_team.id in round4.bye_teams.values():
-            round4_bye_teams.append((round4_plaintiff_teams[i]))
+            round4_bye_teams.append(plaintiff_team)
             round4_plaintiff_teams[i] = round3_bye_teams[plaintiff_team.region]
     # append wild card teams
     round4_defense_teams.append(wild_teams[0])
@@ -196,14 +182,14 @@ def findViablePlaintiff(defense_teams, plaintiff_teams, current_index):
 
 def calculate_round4_bye_teams_scores(bye_teams, session):
     for team in bye_teams:
-        if 4 in team.rounds_participated:
+        if team.rounds_participated and 4 in team.rounds_participated:
             continue
         round_count = 0
-        if 1 in team.rounds_participated:
+        if team.rounds_participated and 1 in team.rounds_participated:
             round_count += 1
-        if 2 in team.rounds_participated:
+        if team.rounds_participated and 2 in team.rounds_participated:
             round_count += 1
-        if 3 in team.rounds_participated:
+        if team.rounds_participated and 3 in team.rounds_participated:
             round_count += 1
         team.trial_wins += team.trial_wins/round_count 
         team.ballots += team.ballots/round_count 
@@ -239,7 +225,7 @@ def createRound1(tournament):
         for region in regions:
             schedule = Schedule(competition_name=region+" Regional Competition", region=region, round_id=1)
             session.add(schedule)
-            teams = session.query(Team).filter_by(region=region).all()
+            teams = session.query(Team).filter(Team.region.lower()==region.lower()).all()
             size = len(teams)
             if size % 2 != 0:
                 # odd number of teams, will have a bye team
@@ -253,8 +239,6 @@ def createRound1(tournament):
                 team2 = teams[size-1-i]
                 team1.role = random.choice([0, 1])
                 team2.role = 1 - team1.role
-                team1.opponent_ids = [team2.id]
-                team2.opponent_ids = [team1.id]
                 match = Match(round_id=1, schedule_id=schedule.id, team_ids=[team1.id, team2.id])
                 if team1.role == 0:
                     match.defense_team_id = team1.id
@@ -305,19 +289,24 @@ def createRound2(tournament):
             session.add(schedule)
             session.commit()
             bye_team = None
+            replace_team_id = None
             replace_team = None
             # teams = session.query(Team).filter(Team.region == region).order_by(
             #     Team.trial_wins.desc(),
             #     Team.ballots.desc(),
             #     Team.total_points.desc(),
             #     Team.point_differential.desc()).all()
-            if region in round1.bye_teams:
+            all_teams = session.query(Team).filter(Team.region.lower() == region.lower())
+            teams = []
+            if round1.bye_teams and region in round1.bye_teams:
                 replace_team_id = round1.bye_teams[region]
-                replace_team = session.query(Team).filter(Team.region == region, Team.id == replace_team_id).first()
-                teams = session.query(Team).filter(Team.region == region, Team.id != replace_team_id).all()
-            else: 
-                teams = session.query(Team).filter(Team.region == region).all()
-            
+                
+            for team in all_teams:
+                if replace_team_id and team.id == replace_team_id:
+                    replace_team = team
+                elif team.rounds_participated and 1 in team.rounds_participated:
+                    teams.append(team)
+                    
             teams.sort(key=lambda t: (t.trial_wins, 
                                       t.ballots,
                                       t.total_points,
@@ -360,16 +349,6 @@ def createRound2(tournament):
                 team2 = plaintiff_teams[i]
                 team1.role = 0
                 team2.role = 1
-                if team1.opponent_ids:
-                    team1.opponent_ids.append(team2.id)
-                else:
-                    team1.opponent_ids = [team2.id]
-                if team2.opponent_ids:
-                    team2.opponent_ids.append(team1.id)
-                else:
-                    team2.opponent_ids = [team1.id]
-                flag_modified(team1, "opponent_ids")
-                flag_modified(team2, "opponent_ids")
                 match = Match(round_id=2, schedule_id=schedule.id, team_ids=[team1.id, team2.id], 
                               team_names = [team1.team_name, team2.team_name],
                               defense_team_id=team1.id, plaintiff_team_id=team2.id)
@@ -416,23 +395,27 @@ def createRound3(tournament):
             schedule = Schedule(competition_name=region+" Regional Competition", region=region, round_id=3)
             session.add(schedule)
             session.commit()
-            teams = session.query(Team).filter(Team.region == region).all()
-            size = len(teams)
+            all_teams = session.query(Team).filter(Team.region.lower() == region.lower()).all()
+            teams = []
+            size = len(all_teams)
             bye_team1 = None
             bye_team2 = None
             bye_team_ids = []
-            # remove if block if the score has been duplicated
-            if size % 2 != 0:
-                bye_team1 = session.query(Team).get(round1.bye_teams[region]) # bye_team in Round 1
-                bye_team2 = [team for team in teams if team.id == round2.bye_teams[region]][0] # bye_team in Round 2
-                bye_team_ids = [bye_team1.id, bye_team2.id]
-                # Not Sure
+            for team in all_teams:
+                if round1.bye_teams and team.id == round1.bye_teams[region]:
+                    bye_team1 = team # bye_team in Round 1
+                    bye_team_ids.append(team.id)
+                elif round2.bye_teams and team.id == round2.bye_teams[region]:
+                    bye_team2 = team # bye_team in Round 2
+                    bye_team_ids.append(team.id)
+                elif team.rounds_participated and 2 in team.rounds_participated:
+                    teams.append(team)
             teams.sort(key=lambda t: (t.trial_wins, 
                                       t.ballots,
                                       t.total_points,
                                       t.point_differential), reverse=True)
             
-            if size % 2 != 0:
+            if len(teams) % 2 != 0:
                 bye_team = teams.pop() # The team in last place will have a bye in Round 3.
                 schedule.bye_team_id = bye_team.id
                 size -= 1
@@ -500,7 +483,6 @@ def createStateFinal(tournament):
         round3 = session.query(Round).get(3)
         all_teams = session.query(Team).all()
         round4_defense_teams, round4_plaintiff_teams, round4_bye_teams = getRound4Teams(all_teams, round3, round4, regions)
-        calculate_round4_bye_teams_scores(round4_bye_teams, session)
         match_size = min(min(len(round4_defense_teams), len(round4_plaintiff_teams)), Round4_MATCH_SIZE)
         # rotate the teams or modify the team sequence until each pair is valid
         for i in range(match_size):
@@ -537,16 +519,6 @@ def createStateFinal(tournament):
             plaintiff_team = round4_plaintiff_teams[i]
             defense_team.role = 0
             plaintiff_team.role = 1
-            if defense_team.opponent_ids:
-                defense_team.opponent_ids.append(plaintiff_team.id)
-            else:
-                defense_team.opponent_ids = [plaintiff_team.id]
-            if plaintiff_team.opponent_ids:
-                plaintiff_team.opponent_ids.append(defense_team.id)
-            else:
-                plaintiff_team.opponent_ids = [defense_team.id]
-            flag_modified(defense_team, "opponent_ids")
-            flag_modified(plaintiff_team, "opponent_ids")
             match = Match(round_id=4, schedule_id=schedule.id, 
                           team_ids=[defense_team.id, plaintiff_team.id], 
                           team_names = [defense_team.team_name, plaintiff_team.team_name],
@@ -603,10 +575,6 @@ def createChampionshipTrial(tournament):
         team2 = round4_teams[1]
         team1.role = random.choice([0, 1])
         team2.role = 1 - team1.role
-        # team1.opponent_ids.append(team2.id)
-        # team2.opponent_ids.append(team1.id)
-        # flag_modified(team1, "opponent_ids")
-        # flag_modified(team2, "opponent_ids")
         match = Match(round_id=5, schedule_id=schedule.id, team_ids=[team1.id, team2.id])
         if team1.role == 0:
             match.defense_team_id = team1.id
@@ -620,8 +588,6 @@ def createChampionshipTrial(tournament):
             match.teams = [team2, team1]
         session.add(match)
         assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
-        # flag_modified(match, "scoring_judge_ids")
-        # flag_modified(match, "scoring_judge_names")
         session.commit()
         if match.zoom_id:
                 deleteMeeting(match.zoom_id)
@@ -633,7 +599,6 @@ def createChampionshipTrial(tournament):
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
         session.add(teamRoster)
         session.commit()
-        # schedules[schedule.region] = formatSchedule(schedule, [match], session)
     return schedules
 
 def formatSchedule(schedule, schedule_matches, session):
@@ -718,43 +683,26 @@ def sortTeams(tournament, round_num, region):
     Session = sessionmaker(engine)
     with Session() as session:
         bye_teams = []
+        teams = []
+        all_teams = session.query(Team).all()
         if round_num == 4:
             round = session.query(Round).get(round_num)
             if round.bye_teams:
                 bye_teams = session.query(Team).filter(Team.id.in_(round.bye_teams.values())).all()
-            teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-            teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
-        elif round_num == 5:
-            teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-            teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
+        for team in all_teams:
+            if team.rounds_participated and round_num in team.rounds_participated:
+                teams.append(team)
         else:
             schedule = session.query(Schedule).filter(Schedule.round_id == round_num, Schedule.region == region).first()
             if schedule.bye_team_id:
                 bye_teams = session.query(Team).filter(Team.id==schedule.bye_team_id)
-            if round_num == 1:
-                teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-                teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
-            if round_num == 2:
-                teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-                teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
-            if round_num == 3:
-                teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-                teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
+            for team in all_teams:
+                if team.region.lower() == region.lower() and team.rounds_participated and round_num in team.rounds_participated:
+                    teams.append(team)
+        teams.sort(key=lambda t: (t.trial_wins, 
+                                  t.ballots,
+                                  t.total_points,
+                                  t.point_differential), reverse=True)
         response = {}
         response["teams"] = [team.to_dict() for team in teams]
         response["bye_teams"] = [team.to_dict() for team in bye_teams]
@@ -766,43 +714,22 @@ def sortTeamsByRole(tournament, round_num, region):
     Session = sessionmaker(engine)
     with Session() as session:
         bye_teams = []
+        teams = []
+        all_teams = session.query(Team).all()
         if round_num == 4:
             round = session.query(Round).get(round_num)
             if round.bye_teams:
                 bye_teams = session.query(Team).filter(Team.id.in_(round.bye_teams.values())).all()
-            teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-            teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
-        elif round_num == 5:
-            teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-            teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
+            for team in all_teams:
+                if team.rounds_participated and round_num in team.rounds_participated:
+                    teams.append(team)
         else:
             schedule = session.query(Schedule).filter(Schedule.round_id == round_num, Schedule.region == region).first()
             if schedule.bye_team_id:
                 bye_teams = session.query(Team).filter(Team.id==schedule.bye_team_id)
-            if round_num == 1:
-                teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-                teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
-            if round_num == 2:
-                teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-                teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
-            if round_num == 3:
-                teams = session.query(Team).filter(round_num.in_(Team.rounds_participated)).all()
-                teams.sort(key=lambda t: (t.trial_wins, 
-                                      t.ballots,
-                                      t.total_points,
-                                      t.point_differential), reverse=True)
+            for team in all_teams:
+                if team.region.lower() == region.lower() and team.rounds_participated and round_num in team.rounds_participated:
+                    teams.append(team)
         defense_teams = []
         plaintiff_teams = []
         for team in teams:

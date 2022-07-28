@@ -117,7 +117,7 @@ def saveJudges(tournament, data):
                 for i in range(len(judge.preferred_teams)):
                     t = judge.preferred_teams[i]
                     judge.preferred_teams[i] = t.strip()
-                    team = session.query(Team).filter(Team.team_name == t).all()
+                    team = session.query(Team).filter(Team.team_name.lower() == t.lower()).all()
                     if team:
                         judge.preferredTeams.append(team[0])
             
@@ -128,7 +128,7 @@ def saveJudges(tournament, data):
                 for i in range(len(judge.unpreferred_teams)):
                     t = unpreferred_teams[i]
                     judge.unpreferred_teams[i] = t.strip()
-                    team = session.query(Team).filter(Team.team_name == t).all()
+                    team = session.query(Team).filter(Team.team_name.lower() == t.lower()).all()
                     if team:
                         judge.unpreferredTeams.append(team[0])
         session.commit()
@@ -145,7 +145,9 @@ def saveScores(tournament, data, round_num):
     Session = sessionmaker(engine)
     with Session() as session:
         m_round = session.query(Round).get(round_num)
-        bye_team_ids = m_round.bye_teams.values()
+        bye_team_ids = None
+        if m_round.bye_teams:
+            bye_team_ids = m_round.bye_teams.values()
         teams = session.query(Team).all()
         team_dict = {}
         team_score_dic = {}
@@ -157,7 +159,7 @@ def saveScores(tournament, data, round_num):
             match.teams = []
         for team in teams:
             team_dict[team.team_name.lower()] = team
-            if team.id in bye_team_ids:
+            if bye_team_ids and team.id in bye_team_ids:
                 if round_num == 2:
                     # team.round2_score_id = team.round1_score_id
                     duplicateScore(team)
@@ -237,7 +239,6 @@ def saveScores(tournament, data, round_num):
                 defense_score.trial_wins += 1
                 match.winner_team = match.team_names[0]
              
-               
             if team1.rounds_participated:
                 team1.rounds_participated.append(round_num)
             else:
@@ -248,21 +249,21 @@ def saveScores(tournament, data, round_num):
                 team2.rounds_participated = [round_num]
             
             if team1.opponent_ids:
-                if team2.id not in team1.opponent_ids:
-                    team1.opponent_ids.append(team1.id)
-                    flag_modified(team1, "opponent_ids")
+                team1.opponent_ids.append(team1.id)
+                flag_modified(team1, "opponent_ids")
             else:
                 team1.opponent_ids = [team2.id]
                 
             if team2.opponent_ids:
-                if team1.id not in team2.opponent_ids:
-                    team2.opponent_ids.append(team1.id)
-                    flag_modified(team2, "opponent_ids")
+                team2.opponent_ids.append(team1.id)
+                flag_modified(team2, "opponent_ids")
             else:
                 team2.opponent_ids = [team1.id]
             
-            if team1.id in bye_team_ids or team2.id in bye_team_ids:
+            if bye_team_ids and team1.id in bye_team_ids:
                 m_round.bye_teams.pop(team1.region)
+                flag_modified(m_round, "bye_teams")
+            if bye_team_ids and team2.id in bye_team_ids:
                 m_round.bye_teams.pop(team2.region)
                 flag_modified(m_round, "bye_teams")
                 

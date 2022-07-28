@@ -105,7 +105,6 @@ def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
 def index():
     return "Welcome to our MTS!"
 
-
 @app.route("/getUser")
 @jwt_required()
 @cross_origin()
