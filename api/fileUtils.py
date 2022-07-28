@@ -138,6 +138,22 @@ def duplicateScore(team):
     team.ballots *= 2
     team.total_points *= 2
     team.point_differential *= 2
+
+def calculate_round4_bye_teams_scores(bye_teams):
+    for team in bye_teams:
+        if team.rounds_participated and 4 in team.rounds_participated:
+            continue
+        round_count = 0
+        if team.rounds_participated and 1 in team.rounds_participated:
+            round_count += 1
+        if team.rounds_participated and 2 in team.rounds_participated:
+            round_count += 1
+        if team.rounds_participated and 3 in team.rounds_participated:
+            round_count += 1
+        team.trial_wins += team.trial_wins/round_count 
+        team.ballots += team.ballots/round_count 
+        team.total_points += team.total_points/round_count 
+        team.point_differential += team.point_differential/round_count 
         
 def saveScores(tournament, data, round_num):
     print(round_num, type(round_num))
@@ -146,6 +162,7 @@ def saveScores(tournament, data, round_num):
     with Session() as session:
         m_round = session.query(Round).get(round_num)
         bye_team_ids = None
+        bye_teams = []
         if m_round.bye_teams:
             bye_team_ids = m_round.bye_teams.values()
         teams = session.query(Team).all()
@@ -160,6 +177,7 @@ def saveScores(tournament, data, round_num):
         for team in teams:
             team_dict[team.team_name.lower()] = team
             if bye_team_ids and team.id in bye_team_ids:
+                bye_teams.append(team)
                 if round_num == 2:
                     # team.round2_score_id = team.round1_score_id
                     duplicateScore(team)
@@ -270,6 +288,8 @@ def saveScores(tournament, data, round_num):
             flag_modified(team1, "rounds_participated")
             flag_modified(team2, "rounds_participated")
             flag_modified(match, "team_names")
+        if round_num == 4:
+            calculate_round4_bye_teams_scores(bye_teams)
         m_round.status = 1
         session.commit()
 
