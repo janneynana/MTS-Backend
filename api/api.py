@@ -14,16 +14,16 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt, get_jwt
 from flask_cors import CORS, cross_origin
 from flask_migrate import Migrate
 
-from .Account import *
-from .Password import *
-from .models import *
-from .config import Config
-from .Database import Database
-from .fileUtils import *
-from .schedules import *
-from .Zoom import *
-from .JudgeReassignment import *
-from .Metadata import meta
+from Account import *
+from Password import *
+from models import *
+from config import Config
+from Database import Database
+from fileUtils import *
+from schedules import *
+from Zoom import *
+from JudgeReassignment import *
+from Metadata import meta
 
 def create_app(config):
     app = Flask(__name__)
