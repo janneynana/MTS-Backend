@@ -729,7 +729,9 @@ def CreateTournament():
         db.session.commit()
         response["tournament"] = tournament.to_dict()
         # create all tables in the new database
+        print("create all tables in the new database")
         init_db(app, tournament.db_url)
+        print("connect back to the default database")
         # connect back to the default database
         init_db(app, Database.DEFAULT)
         # connect to the database of the tournament
