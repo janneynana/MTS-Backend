@@ -21,6 +21,7 @@ from fileUtils import *
 from schedules import *
 from Zoom import *
 from JudgeReassignment import *
+from Metadata import meta
 
 def create_app(config):
     app = Flask(__name__)
@@ -728,14 +729,10 @@ def CreateTournament():
         tournament = Database.create_tournament_db(tournament)
         db.session.commit()
         response["tournament"] = tournament.to_dict()
-        # create all tables in the new database
-        print("create all tables in the new database, yup")
-        init_db(app, tournament.db_url)
-        print("connect back to the default database")
-        # connect back to the default database
-        init_db(app, Database.DEFAULT)
         # connect to the database of the tournament
         engine = create_engine(tournament.db_url)
+        # create all tables in the new database
+        meta.create_all(engine)
         Session = sessionmaker(engine)
         with Session() as session:
             new_tournament = copyTournament(tournament)
