@@ -3,7 +3,9 @@ File that handles GET/POST Requests from FrontEnd
 """
 from datetime import *
 import os
+from pydoc import resolve
 import shutil
+from urllib import response
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
@@ -12,16 +14,16 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt, get_jwt
 from flask_cors import CORS, cross_origin
 from flask_migrate import Migrate
 
-from Account import *
-from Password import *
-from models import *
-from config import Config
-from Database import Database
-from fileUtils import *
-from schedules import *
-from Zoom import *
-from JudgeReassignment import *
-from Metadata import meta
+from .Account import *
+from .Password import *
+from .models import *
+from .config import Config
+from .Database import Database
+from .fileUtils import *
+from .schedules import *
+from .Zoom import *
+from .JudgeReassignment import *
+from .Metadata import meta
 
 def create_app(config):
     app = Flask(__name__)
@@ -48,29 +50,6 @@ def init_db(app, db_url):
 app = create_app(Config)
 jwt = JWTManager(app)
 
-
-"""
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USE_TSL'] = False
-app.config['MAIL_USE_SSL'] = True
-app.config['MAIL_DEBUG'] = True
-app.config['MAIL_USERNAME'] = 'CS407MTS@gmail.com'
-app.config['MAIL_PASSWORD'] = 'cs407IBFMTS'
-mail = Mail(app)
-
-print("In here!")
-        str = ("Thank you for wanting to administer an IBF mock trial competition.\n\n"
-               "Here is your authentication code to sign up: TEMPCODE" #+ details[0] +
-               "\nTo create your account please go to: localhost:300/create_account.\n"
-               "Thank you,\n IBF Team")
-        msg = Message("Authentication Code", sender="CS407MTS@outlook.com", body=str, recipients=["szapodeanu19@gmail.com"])
-        print("2")
-        mail.send(msg)
-        print("3")
-        return "message"
-
-"""
 
 
 # The access_token should expire if an account has been inactive for an hour
@@ -180,7 +159,7 @@ def sendInvite():
     if request.method == "POST":
         data = request.get_json()
         print(data['email'])
-        account = Account(data['email'], "", "", "") # account = User(data['email'], "", "", "")
+        account = Account(data['email'], "", "", "", "", "", "") # account = User(data['email'], "", "", "")
         unique = account.already_exists()
         
         # same thing as "unique = account.already_exists()"
@@ -213,19 +192,19 @@ def createAccount():
         data = request.get_json()
         print(data)
         password = Password(data['password'])
-        account = Account(data['email'], password.password, data['authCode'], 'root')
+        secA = Password(data['secA'])
+        account = Account(data['email'], password.password, data['authCode'], 'root', data['region'],
+                          data['secQ'], secA.password)
         print(account)
         isValid = account.verify_account()
         if isValid == 0:
             return {"message": "Account not Found", "status": 404}
-        valid_account = Account(data['email'], '', '', '')
+        valid_account = Account(data['email'], '', '', '', '', '', '')
         already_created = valid_account.already_exists()
         print(already_created[0][2])
         if already_created[0][2] != "":
             return {"message": "Error: account already created", "status": 502}
-
         create = account.create_account()
-
     return {"message": "Account created", "status": 200}
 
 
@@ -235,7 +214,7 @@ def createAccount():
 def deleteAccount():
     if request.method == "POST":
         data = request.get_json()
-        account = Account(data['email'], "", "", "")
+        account = Account(data['email'], "", "", "", "", "", "")
         response = account.delete_account()
         print(response)
         if response == 0:
@@ -249,7 +228,7 @@ def editRole():
     if request.method == "POST":
         data = request.get_json()
         print(data['email'])
-        account = Account(data['email'], "", "", "")
+        account = Account(data['email'], "", "", "", "", "", "")
         get_account = account.already_exists()
         if not get_account:
             return {"message": "Account not real", "status": 502}
@@ -279,11 +258,77 @@ def setCode():
     if request.method == "POST":
         data = request.get_json()
         print(data['code'])
-        account = Account("CODE", "", "", "")
+        account = Account("CODE", "", "", "", "", "", "")
         code = account.set_code(data['code'])
         if code == 1:
             return {"message": "AuthCode Changed Succesfully", "status": 200}
     return {"message": "AuthCode Changed Unsuccesfully", "status": 400}
+
+@app.route('/editRegion', methods=["POST"])
+@cross_origin()
+def editRegion():
+    if request.method == "POST":
+        data = request.get_json()
+        print(data)
+        account = Account(data['email'], "", "", "", data['region'], "", "")
+        reg = account.edit_region()
+        print(reg)
+        if reg == 1:
+            return {"message": "region Changed Succesfully", "status": 200}
+        return {"message": "region Changed Unsuccesfully", "status": 400}
+
+@app.route('/changePass', methods=["POST"])
+@cross_origin()
+def changePass():
+    if request.method == "POST":
+        data = request.get_json()
+        print(data)
+        old = Password(data['oldPass'])
+        passAcc = Account(data['email'], "", "", "", "", "", "")
+        currPass = passAcc.get_pass(data['email'])
+        print(currPass, old.password)
+        if old.password != currPass:
+            return {"message": "OldPass does not match", "status": 501}
+        new = Password(data['newPass'])
+        account = Account(data['email'], new.password, "", "", "", "", "")
+        ret = account.change_pass()
+        if ret == 1:
+            return {"message": "password Changed Succesfully", "status": 200}
+        return {"message": "Password Changed Unsuccesfully", "status": 502}
+
+@app.route('/forgetPass', methods=["POST"])
+@cross_origin()
+def forgetPass():
+    if request.method == "POST":
+        data = request.get_json()
+        print(data)
+        response = Password(data['response'])
+        print(response.password)
+        password = Password(data['password']).password
+        account = Account(data['email'], password, "", "", "", "", response.password)
+        valid = account.get_answer()
+        if valid != response.password:
+            return {"message": "Response not correct", "status": 500}
+        reset = account.change_pass()
+        if reset == 1:
+            return {"message": "Password reset", "status": 200}
+        return {"message": "Password not reset", "status": 501}
+
+    return "valid"
+
+
+@app.route('/getEmail', methods=["POST"])
+@cross_origin()
+def getEmail() :
+    if request.method == "POST":
+        data = request.get_json()
+        print(data)
+        account = Account(data['email'], "", "", "", "", "", "")
+        get_account = account.already_exists()
+        print(get_account)
+        if not get_account:
+            return {"message": "Account can not be found", "status": 500}
+        return {"message": "Account found", "question": get_account[0][6], "status": 200}
 
 
 @app.route('/updateAccount', methods=["POST"])
@@ -427,10 +472,9 @@ def uploadScore():
 def getTournaments():
     data = request.get_json()
     uid = data["uid"]
-    # uid = get_jwt_identity()
-    # head admin, all tournaments - deleted: false
     user = User.query.get(uid)
     if user.role.lower() == "Head".lower() or user.role.lower() == "root".lower():
+        print("Getting all tournaments")
         tournaments = Tournament.query.filter(Tournament.deleted == False, Tournament.complete == False)
     else:
         # tournaments = Tournament.query.filter(Tournament.deleted == False, Tournament.region == user.region)
@@ -490,6 +534,7 @@ def getRounds():
         Session = sessionmaker(engine)
         response = {}
         with Session() as session:
+            print("I am in")
             rounds = session.query(Tournament).get(tournament_id).rounds
             response["current_round"] = tournament.current_round
             # rounds_dict = {}
@@ -677,13 +722,13 @@ def DeleteTournament():
     args = request.get_json()
     tournament_id = args["tournament_id"]
     tournament = Tournament.query.get(tournament_id)
-    engine = create_engine(tournament.db_url)
-    Session = sessionmaker(engine)
-    with Session() as session:
-        matches = session.query(Match).all()
-        for match in matches:
-            if match.id != -1 and match.zoom_id:
-                deleteMeeting(match.zoom_id)
+    # engine = create_engine(tournament.db_url)
+    # Session = sessionmaker(engine)
+    # with Session() as session:
+    #     matches = session.query(Match).all()
+    #     for match in matches:
+    #         if match.id != -1 and match.zoom_id:
+    #             deleteMeeting(match.zoom_id)
     Database.delete_tournament_db(tournament)
     path = Database.getTournamentFolder(tournament)
     try:

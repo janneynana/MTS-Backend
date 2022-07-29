@@ -16,11 +16,14 @@ from Database import *
 
 class Account:
     # base constructor
-    def __init__(self, email, password, authCode, role):
+    def __init__(self, email, password, authCode, role, region, secQ, secA):
         self.email = email
         self.password = password
         self.authCode = authCode
         self.role = role
+        self.region = region
+        self.secQ = secQ
+        self.secA = secA
 
 
     def set_role(self, role):
@@ -40,7 +43,7 @@ class Account:
         return connection
 
     def initialize_account(self):
-        self.authCode = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        self.authCode = self.get_auth_code()
         print(self.authCode)
         connection = self.initialize()
         cursor = connection.cursor()
@@ -67,8 +70,9 @@ class Account:
     def create_account(self):
         connection = self.initialize()
         cursor = connection.cursor()
-        cursor.execute("Update account SET password = '{0}' WHERE email = '{1}' AND \"authCode\"='{2}';"
-                       .format(self.password, self.email, self.authCode))
+        cursor.execute("Update account SET password = '{0}',region='{1}', security_question='{2}', answer='{3}' "
+                        "WHERE email = '{4}' AND \"authCode\"='{5}';"
+                       .format(self.password, self.region, self.secQ, self.secA, self.email, self.authCode))
         print(cursor.rowcount)
         row = cursor.rowcount
         connection.commit()
@@ -130,3 +134,53 @@ class Account:
         cursor.close()
         connection.close()
         return rows
+
+    def get_auth_code(self):
+        connection = self.initialize()
+        cursor = connection.cursor()
+        cursor.execute("SELECT \"authCode\" FROM account WHERE id=0 AND email='CODE';")
+        rows = cursor.fetchall()
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return rows[0][0]
+
+    def edit_region(self):
+        connection = self.initialize()
+        cursor = connection.cursor()
+        cursor.execute("UPDATE account SET region='{0}' WHERE email='{1}';".format(self.region, self.email))
+        rows = cursor.rowcount
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return rows
+
+    def change_pass(self):
+        connection = self.initialize()
+        cursor = connection.cursor()
+        cursor.execute("UPDATE account SET password='{0}' WHERE email='{1}';".format(self.password, self.email))
+        rows = cursor.rowcount
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return rows
+
+    def get_pass(self, email):
+        connection = self.initialize()
+        cursor = connection.cursor()
+        cursor.execute("SELECT password FROM account WHERE email='{0}';".format(self.email))
+        rows = cursor.fetchall()
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return rows[0][0]
+
+    def get_answer(self):
+        connection = self.initialize()
+        cursor = connection.cursor()
+        cursor.execute("SELECT answer FROM account WHERE email='{0}';".format(self.email))
+        rows = cursor.fetchall()
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return rows[0][0]

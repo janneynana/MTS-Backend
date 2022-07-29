@@ -182,9 +182,8 @@ def saveScores(tournament, data, round_num):
             if bye_team_ids and team.id in bye_team_ids:
                 bye_teams.append(team)
                 if round_num == 2:
-                    # team.round2_score_id = team.round1_score_id
+                    # round2 bye teams
                     duplicateScore(team)
-                continue
             if round_num == 2 and team.rounds_participated is None:
                 duplicateScore(team)
             teamScore = TeamScore(team_id=team.id, trial_wins=0, ballots=0, total_points=0, point_differential=0)
@@ -237,8 +236,8 @@ def saveScores(tournament, data, round_num):
             # print(match.id, match.plaintiff_team_id, match.defense_team_id)
             plaintiff_score = team_score_dic[match.plaintiff_team_id]
             defense_score = team_score_dic[match.defense_team_id]
-            team1 = match.teams[0]
-            team2 = match.teams[1]
+            team1 = team_dict.pop(match.teams[0].team_name)
+            team2 = team_dict.pop(match.teams[1].team_name)
             # Two Judge Panel
             scoreSheets = match.scoreSheets
             if len(scoreSheets) == 2:
@@ -288,18 +287,23 @@ def saveScores(tournament, data, round_num):
             else:
                 team2.opponent_ids = [team1.id]
             
-            if bye_team_ids and team1.id in bye_team_ids:
-                m_round.bye_teams.pop(team1.region)
-                flag_modified(m_round, "bye_teams")
-            if bye_team_ids and team2.id in bye_team_ids:
-                m_round.bye_teams.pop(team2.region)
-                flag_modified(m_round, "bye_teams")
+            # if bye_team_ids and team1.id in bye_team_ids:
+            #     m_round.bye_teams.pop(team1.region)
+            #     flag_modified(m_round, "bye_teams")
+            # if bye_team_ids and team2.id in bye_team_ids:
+            #     m_round.bye_teams.pop(team2.region)
+            #     flag_modified(m_round, "bye_teams")
                 
             flag_modified(team1, "rounds_participated")
             flag_modified(team2, "rounds_participated")
             flag_modified(match, "team_names")
+        new_bye_teams = []
+        new_bye_teams_dict = {}
+        for team in team_dict.values():
+            new_bye_teams.append(team)
+            new_bye_teams_dict[team.region] = team.id
         if round_num == 4:
-            calculate_round4_bye_teams_scores(bye_teams)
+            calculate_round4_bye_teams_scores(new_bye_teams)
         m_round.status = 1
         session.commit()
     return -1
