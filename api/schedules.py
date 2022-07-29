@@ -596,7 +596,7 @@ def formatSchedule(schedule, schedule_matches, session):
             response["bye_teams"] = "None"
     elif schedule.bye_team_id:
         bye_teams = session.query(Team).filter(Team.id==schedule.bye_team_id)
-    t = session.query(Team).get(matches[0].defense_team_id)
+    t = session.query(Team).get(schedule_matches[0].defense_team_id)
     schedule.region = t.region
     for match in schedule_matches:
         match_dict = {}
