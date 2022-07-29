@@ -240,16 +240,18 @@ def createRound1(tournament):
                     match.plaintiff_team_id = team1.id
                     match.team_names = [team2.team_name, team1.team_name]
                     match.teams = [team2, team1]
-                assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
                 session.add(match)
                 matches.append(match)
         session.flush()
         round.bye_teams = bye_teams
         for match in matches:
+            # if match.zoom_id:
+            #     deleteMeeting(match.zoom_id)
             created, id, link = createMeeting(match)
             if created:
                 match.zoom_id = id
                 match.zoom_link = link
+            assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)
@@ -340,7 +342,6 @@ def createRound2(tournament):
                               defense_team_id=team1.id, plaintiff_team_id=team2.id)
                 match.teams = [team1, team2]
                 matches.append(match)
-                assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
                 session.add(match)
                 # print(to_dict(match))
                 i += 1
@@ -353,6 +354,7 @@ def createRound2(tournament):
             if created:
                 match.zoom_id = id
                 match.zoom_link = link
+            assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)
@@ -429,17 +431,19 @@ def createRound3(tournament):
                 # print(len(matches))
                 i += 2
             for match in matches:
-                assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
                 session.add(match)
             all_matches.extend(matches)
             session.flush()
             # schedules[region] = formatSchedule(schedule, matches, session)
         round.bye_teams = bye_teams
         for match in all_matches:
+            # if match.zoom_id:
+            #     deleteMeeting(match.zoom_id)
             created, id, link = createMeeting(match)
             if created:
                 match.zoom_id = id
                 match.zoom_link = link
+            assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)   
@@ -569,8 +573,8 @@ def createChampionshipTrial(tournament):
             match.team_names = [team2.team_name, team1.team_name]
             match.teams = [team2, team1]
         session.add(match)
-        assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
         session.flush()
+        assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
         # if match.zoom_id:
         #         deleteMeeting(match.zoom_id)
         created, id, link = createMeeting(match)
