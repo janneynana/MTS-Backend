@@ -596,56 +596,55 @@ def formatSchedule(schedule, schedule_matches, session):
             response["bye_teams"] = "None"
     elif schedule.bye_team_id:
         bye_teams = session.query(Team).filter(Team.id==schedule.bye_team_id)
-    if schedule.formatted:
-        response["matches"] = schedule.formattedMatches
-    else:
-        for match in schedule_matches:
-            match_dict = {}
-            match_dict["courtroom"] = match.id
-            match_dict["teams"] = {}
-            match_dict["sides"] = {}
-            # if round.id in [1, 3, 5]:
-            #     # to be determined before the trial starts
-            #     match_dict["teams"]["first"] = match.team_names[0]
-            #     match_dict["sides"]["first"] = "Undecided"
-            #     match_dict["sides"]["second"] = "Undecided"
-            #     match_dict["teams"]["second"] = match.team_names[1]
-            # else:
-            # match_dict["teams"]["first"] = session.query(Team).get(match.plaintiff_team_id).team_name
-            match_dict["teams"]["first"] = match.team_names[1]
-            match_dict["sides"]["first"] = "Plaintiff"
-            match_dict["sides"]["second"] = "Defense"
-            # match_dict["teams"]["second"] = session.query(Team).get(match.defense_team_id).team_name
-            match_dict["teams"]["second"] = match.team_names[0]
-            match_dict["winner_team"] = match.winner_team
-            match_dict["presidingJudge"] = ""
-            match_dict["scoringJudgeFirst"] = ""
-            match_dict["scoringJudgeSecond"] = ""
-            match_dict["scoringJudgeThird"] = ""
-            match_dict["zoomLink"] = ""
-            match_dict["teamRosterLink"] = ""
-            if match.presiding_judge_id:
-                match_dict["presidingJudge"] = match.presiding_judge_name
-            if match.scoring_judge_ids:
-                scoring_judges = match.scoring_judge_names
-                match_dict["scoringJudgeFirst"] = scoring_judges[0]
-                match_dict["scoringJudgeSecond"] = scoring_judges[1]
-                try:
-                    match_dict["scoringJudgeThird"] = scoring_judges[2]
-                except Exception:
-                    match_dict["scoringJudgeThird"] = ""
-            if match.zoom_link:
-                match_dict["zoomLink"] = match.zoom_link
-            if match.bestWitness:
-                match_dict["bestWitness"] = match.bestWitness
-            if match.bestAttorney:
-                match_dict["bestAttorney"] = match.bestAttorney
-            # formatted = FormattedMatch(courtroom=match.id, teams=match_dict["teams"], sides=match_dict["sides"],
-            #                            winner_team=match.winner_team)
-            # session.add(formatted)
-            matches.append(match_dict)
-        response["matches"] = matches
-        # schedule.formatted = True
+    t = session.query(Team).get(matches[0].defense_team_id)
+    schedule.region = t.region
+    for match in schedule_matches:
+        match_dict = {}
+        match_dict["courtroom"] = match.id
+        match_dict["teams"] = {}
+        match_dict["sides"] = {}
+        # if round.id in [1, 3, 5]:
+        #     # to be determined before the trial starts
+        #     match_dict["teams"]["first"] = match.team_names[0]
+        #     match_dict["sides"]["first"] = "Undecided"
+        #     match_dict["sides"]["second"] = "Undecided"
+        #     match_dict["teams"]["second"] = match.team_names[1]
+        # else:
+        # match_dict["teams"]["first"] = session.query(Team).get(match.plaintiff_team_id).team_name
+        match_dict["teams"]["first"] = match.team_names[1]
+        match_dict["sides"]["first"] = "Plaintiff"
+        match_dict["sides"]["second"] = "Defense"
+        # match_dict["teams"]["second"] = session.query(Team).get(match.defense_team_id).team_name
+        match_dict["teams"]["second"] = match.team_names[0]
+        match_dict["winner_team"] = match.winner_team
+        match_dict["presidingJudge"] = ""
+        match_dict["scoringJudgeFirst"] = ""
+        match_dict["scoringJudgeSecond"] = ""
+        match_dict["scoringJudgeThird"] = ""
+        match_dict["zoomLink"] = ""
+        match_dict["teamRosterLink"] = ""
+        if match.presiding_judge_id:
+            match_dict["presidingJudge"] = match.presiding_judge_name
+        if match.scoring_judge_ids:
+            scoring_judges = match.scoring_judge_names
+            match_dict["scoringJudgeFirst"] = scoring_judges[0]
+            match_dict["scoringJudgeSecond"] = scoring_judges[1]
+            try:
+                match_dict["scoringJudgeThird"] = scoring_judges[2]
+            except Exception:
+                match_dict["scoringJudgeThird"] = ""
+        if match.zoom_link:
+            match_dict["zoomLink"] = match.zoom_link
+        if match.bestWitness:
+            match_dict["bestWitness"] = match.bestWitness
+        if match.bestAttorney:
+            match_dict["bestAttorney"] = match.bestAttorney
+        # formatted = FormattedMatch(courtroom=match.id, teams=match_dict["teams"], sides=match_dict["sides"],
+        #                            winner_team=match.winner_team)
+        # session.add(formatted)
+        matches.append(match_dict)
+    response["matches"] = matches
+    # schedule.formatted = True
     response["schedule"] =schedule.to_dict()
     response["bye_teams"] = [team.team_name for team in bye_teams]
     return response
