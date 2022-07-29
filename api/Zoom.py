@@ -7,12 +7,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 
-from models import *
-from Database import *
+from .models import *
+from .Database import *
 
 
 # Enter your API key and your API secret
-API_KEY = 'I3L5b4rMSgWRkLH9gEwxNA'
+API_KEY = 'I3L5b4rMSgWRkLH9gEwxNA' # NtqNTBUDT5q0QLKeLWgPyA
 API_SEC = 'XBB3jOruq8TXxtXN7yMmbyEwOL5PLvhByYKg'
 
 # create a function to generate a token

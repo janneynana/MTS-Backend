@@ -4,9 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 
-from models import *
-from Database import *
-from Zoom import *
+from .models import *
+from .Database import *
+from .Zoom import *
 
 Round4_MATCH_SIZE = 14
 
@@ -209,7 +209,7 @@ def createRound1(tournament):
         m_tournament.current_round = 1
         round = Round(id=1, name="Round1", tournament_id=tournament.id)
         session.add(round)
-        session.commit()
+        session.flush()
         bye_teams = {}
         matches = []
         for region in regions:
@@ -243,8 +243,7 @@ def createRound1(tournament):
                 assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
                 session.add(match)
                 matches.append(match)
-            # schedules[region] = formatSchedule(schedule, matches, session)
-        session.commit()
+        session.flush()
         round.bye_teams = bye_teams
         for match in matches:
             # if match.zoom_id:
@@ -277,7 +276,7 @@ def createRound2(tournament):
         for region in regions:
             schedule = Schedule(competition_name=region+" Regional Competition", region=region, round_id=2)
             session.add(schedule)
-            session.commit()
+            session.flush()
             bye_team = None
             replace_team_id = None
             replace_team = None
@@ -348,7 +347,7 @@ def createRound2(tournament):
                 # print(to_dict(match))
                 i += 1
             # schedules[region] = formatSchedule(schedule, matches, session)
-        session.commit()
+        session.flush()
         for match in matches:
             # if match.zoom_id:
             #     deleteMeeting(match.zoom_id)
@@ -383,7 +382,7 @@ def createRound3(tournament):
             matches = []
             schedule = Schedule(competition_name=region+" Regional Competition", region=region, round_id=3)
             session.add(schedule)
-            session.commit()
+            session.flush()
             teams = session.query(Team).filter(Team.region == region).all()
             bye_team1 = None
             bye_team2 = None
@@ -435,7 +434,7 @@ def createRound3(tournament):
                 assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
                 session.add(match)
             all_matches.extend(matches)
-            session.commit()
+            session.flush()
             # schedules[region] = formatSchedule(schedule, matches, session)
         round.bye_teams = bye_teams
         for match in all_matches:
@@ -465,7 +464,7 @@ def createStateFinal(tournament):
         session.add(round4)
         schedule = Schedule(competition_name="State Finals", region="StateWide", round_id=4)
         session.add(schedule)
-        session.commit()
+        session.flush()
         round3 = session.query(Round).get(3)
         all_teams = session.query(Team).all()
         round4_defense_teams, round4_plaintiff_teams, round4_bye_teams = getRound4Teams(all_teams, round3, round4, regions)
@@ -515,8 +514,9 @@ def createStateFinal(tournament):
             matches.append(match)
             i += 1
         # schedules[schedule.region] = formatSchedule(schedule, matches, session)
-        session.commit()
+        session.flush()
         for match in matches:
+            # print(match.id, match.team_names)
             # if match.zoom_id:
             #     deleteMeeting(match.zoom_id)
             # created, id, link = createMeeting(match)
@@ -574,7 +574,7 @@ def createChampionshipTrial(tournament):
             match.teams = [team2, team1]
         session.add(match)
         assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
-        session.commit()
+        session.flush()
         # if match.zoom_id:
         #         deleteMeeting(match.zoom_id)
         # created, id, link = createMeeting(match)
@@ -787,7 +787,7 @@ def assign(match, j, judges, role):
     j.assigned += 1
     j.match_id = match.id
     # print(len(judges))
-    # print(j.name)
+    # print(j.match_id)
     judges.remove(j) 
     
 def assignJugesByTeamPreference(match, team1, team2, team1_unpreferred, team2_unpreferred, team1_preferred, team2_preferred, judges, role):
@@ -896,6 +896,8 @@ def assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, sc
             team1_preferred, team2_preferred, presiding_uppreferred, 1)
         
         if not assigned:
+            # Two-judge panel
+            # - Two judges will score, one of which will also serve as a presiding judge
             match.scoring_judge_ids.append(match.presiding_judge_id)
             match.scoring_judge_names.append(match.presiding_judge_name)
             flag_modified(match, "scoring_judge_ids")
@@ -905,6 +907,16 @@ def assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, sc
             # assign Scoring judge3
             assigned = assignJudgesByRolePreference(match, team1, team2, team1_unpreferred, team2_unpreferred, 
             team1_preferred, team2_preferred, scoring_judges, 1)
+            # if assigned
+            # Four-judge panel 
+            # – Three judges will score, the fourth will serve as the presiding judge
+            if not assigned:
+                # Three-judge panel 
+                # - Three judges will score, one of which will also serve as the presiding judge
+                match.scoring_judge_ids.append(match.presiding_judge_id)
+                match.scoring_judge_names.append(match.presiding_judge_name)
+                flag_modified(match, "scoring_judge_ids")
+                flag_modified(match, "scoring_judge_names")
     
     return
    

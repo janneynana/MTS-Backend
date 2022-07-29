@@ -5,10 +5,8 @@ File to interact with the database.
 import string
 import random
 import psycopg2
-# from .config import Config
-# from .Database import *
-from config import Config
-from Database import *
+from .config import Config
+from .Database import *
 
 # Function that creates an account in the database.
 # The only fields that will be populated will be the email and the Access Code
@@ -107,6 +105,26 @@ class Account:
         connection = self.initialize()
         cursor = connection.cursor()
         cursor.execute("UPDATE account SET role='{0}' WHERE email='{1}';".format(role, self.email))
+        rows = cursor.rowcount
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return rows
+
+    def get_admins(self):
+        connection = self.initialize()
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM account WHERE role='root'")
+        rows = cursor.rowcount
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return rows
+
+    def set_code(self, code):
+        connection = self.initialize()
+        cursor = connection.cursor()
+        cursor.execute("UPDATE account SET \"authCode\"='{0}' WHERE id={1} AND email='{2}';".format(code, 0, "CODE"))
         rows = cursor.rowcount
         connection.commit()
         cursor.close()

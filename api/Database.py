@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from sqlalchemy_utils import database_exists, create_database, drop_database
-from config import Config
+from .config import Config
 
 class Database():
     DEFAULT = 'postgresql+psycopg2://{dbuser}:{dbpass}@{dbhost}/{dbname}?sslmode=require'.format(

@@ -3,8 +3,7 @@ from datetime import timedelta
 class Config(object):
     DEBUG = True
     TESTING = True
-    PORT = "5000"
-    ENABLE_ORYX_BUILD = True
+    PORT = "8000"
     
     # Set the secret key
     # This is implemented on top of cookies for you and signs the cookies cryptographically. 

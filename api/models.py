@@ -1,5 +1,4 @@
 import json
-from math import fabs
 from multiprocessing.dummy import Array
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import ARRAY, Float, ForeignKey, Column, Integer, PickleType, String, Boolean, DateTime, Table
@@ -47,11 +46,13 @@ class Tournament(db.Model):
     creator_id = Column(Integer, ForeignKey("account.id"))
     current_round = Column(Integer, default=0) # 0: haven't started; -1: Completed; 1-3: Regional Round; 4: State Final; 5: Championship Trial
     regions = Column(ARRAY(String))
+    user_region = Column(ARRAY(String))
     team_uploaded = Column(Integer, default=0) # 0: haven't uploaded teams yet; 1: team uploaded
     judge_uploaded = Column(Integer, default=0) # 0: haven't uploaded judges yet; 1: judge uploaded
     wild_uploaded = Column(Integer, default=0) # 0: haven't uploaded wild card teams yet; 1: wild card teams uploaded
     deleted = Column(Boolean, default=False)
     db_url = Column(String(200))
+    complete = Column(Boolean, default=False)
 
     #relationships
     # creator = relationship("User", back_populates="tournaments", foreign_keys=[creator_id])
@@ -279,8 +280,12 @@ class Match(db.Model):
     scoring_judge_ids = Column(ARRAY(Integer))
     presiding_judge_name = Column(String)
     scoring_judge_names = Column(ARRAY(String))
+    plaintiff_score = Column(Float, default=0)
+    defense_score = Column(Float, default=0)
     bestWitness = Column(String)
     bestAttorney = Column(String)
+    defense_score = Column(Float)
+    plaintiff_score = Column(Float)
 
     # relationship
     scores = relationship("Scoresheet", back_populates="match")
@@ -288,6 +293,14 @@ class Match(db.Model):
     schedule = relationship("Schedule", back_populates="matches", lazy='subquery')
     teamRoster = relationship("TeamRoster", back_populates="match")
     
+    def to_dict(self):
+        fields = {}
+        fields["id"] = self.id
+        fields["teams"] = self.team_names
+        fields["defense_score"] = self.defense_score 
+        fields["plaintiff_score"] = self.plaintiff_score
+        fields["winner_team"] = self.winner_team
+        return fields
 
     def __repr__(self):
         return '<Match %r>' % str(self.id)

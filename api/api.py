@@ -3,8 +3,8 @@ File that handles GET/POST Requests from FrontEnd
 """
 from datetime import *
 import os
+from pydoc import resolve
 import shutil
-from unicodedata import name
 from urllib import response
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
@@ -14,15 +14,15 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt, get_jwt
 from flask_cors import CORS, cross_origin
 from flask_migrate import Migrate
 
-from Account import *
-from Password import *
-from models import *
-from config import Config
-from Database import Database
-from fileUtils import *
-from schedules import *
-from Zoom import *
-from JudgeReassignment import *
+from .Account import *
+from .Password import *
+from .models import *
+from .config import Config
+from .Database import Database
+from .fileUtils import *
+from .schedules import *
+from .Zoom import *
+from .JudgeReassignment import *
 
 def create_app(config):
     app = Flask(__name__)
@@ -48,6 +48,30 @@ def init_db(app, db_url):
     
 app = create_app(Config)
 jwt = JWTManager(app)
+
+
+"""
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USE_TSL'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_DEBUG'] = True
+app.config['MAIL_USERNAME'] = 'CS407MTS@gmail.com'
+app.config['MAIL_PASSWORD'] = 'cs407IBFMTS'
+mail = Mail(app)
+
+print("In here!")
+        str = ("Thank you for wanting to administer an IBF mock trial competition.\n\n"
+               "Here is your authentication code to sign up: TEMPCODE" #+ details[0] +
+               "\nTo create your account please go to: localhost:300/create_account.\n"
+               "Thank you,\n IBF Team")
+        msg = Message("Authentication Code", sender="CS407MTS@outlook.com", body=str, recipients=["szapodeanu19@gmail.com"])
+        print("2")
+        mail.send(msg)
+        print("3")
+        return "message"
+
+"""
 
 
 # The access_token should expire if an account has been inactive for an hour
@@ -82,20 +106,12 @@ def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
 def index():
     return "Welcome to our MTS!"
 
-@app.route("/test")
-def test():
-    tournament = Tournament.query.get(96)
-    engine = create_engine(tournament.db_url)
-    Session = sessionmaker(engine)
-    with Session() as session:
-        round_num = 1
-        teams = session.query(Team).all()
-        round1_teams = []
-        for team in teams:
-            if team.rounds_participated and round_num in team.rounds_participated:
-                round1_teams.append(team)
-        response = {"teams": [team.to_dict() for team in teams]}
-        return jsonify(response)
+@app.route("/checkSession")
+@jwt_required()
+@cross_origin()
+def checkSession():
+    
+    return jsonify({"code": 0})
 
 
 @app.route("/getUser")
@@ -185,7 +201,7 @@ def sendInvite():
         # db.session.commit()
         
         if details[1] == 1:
-            return {"message": "Account Created Succesfully", "status": 200}
+            return {"message": "Account Created Succesfully", "authCode": details[0], "status": 200}
         else:
             return {"message": "Error: Error creating the account", "status": 503}
 
@@ -242,18 +258,33 @@ def editRole():
         result = None
         #print(role)
         if role == 'root':
+            admins = account.get_admins()
+            if admins <= 3:
+                return {"message": "Not enough admins remaining", "role": "root", "status": 504}
             result = account.edit_role('admin')
+            if result == 1:
+                return {"message": "Role changed succesfully", "role": "admin", "status": 200}
+            if result == 0:
+                return {"message": "Error in changing Roles", "role": "admin", "status": 503}
         else:
             result = account.edit_role('root')
-        print(result)
-        if result == 1:
-            return {"message": "Role changed succesfully", "role": role, "status": 200}
-        if result == 0:
-            return {"message": "Error in changing Roles", "role": role, "status": 503}
-
-
-
+            if result == 1:
+                return {"message": "Role changed succesfully", "role": "root", "status": 200}
+            if result == 0:
+                return {"message": "Error in changing Roles", "role": "root", "status": 503}
     return("IM HERE")
+
+@app.route('/setCode', methods=["POST"])
+@cross_origin()
+def setCode():
+    if request.method == "POST":
+        data = request.get_json()
+        print(data['code'])
+        account = Account("CODE", "", "", "")
+        code = account.set_code(data['code'])
+        if code == 1:
+            return {"message": "AuthCode Changed Succesfully", "status": 200}
+    return {"message": "AuthCode Changed Unsuccesfully", "status": 400}
 
 
 @app.route('/updateAccount', methods=["POST"])
@@ -385,8 +416,10 @@ def uploadScore():
             response = {"code": -5, "error": "courtroom not found", "wrong_courtroom": wrong_courtroom}
             return jsonify(response)
         else:
+            if round_num == 5:
+                tournament.complete = True
             db.session.commit()
-            response = {"code": 0, "success": "file uploaded"}
+            response = {"code": 0, "success": "file uploaded", "tournament": tournament.to_dict()}
             return jsonify(response)
 
 
@@ -399,12 +432,28 @@ def getTournaments():
     # head admin, all tournaments - deleted: false
     user = User.query.get(uid)
     if user.role.lower() == "Head".lower() or user.role.lower() == "root".lower():
-        tournaments = Tournament.query.filter(Tournament.deleted == False)
+        tournaments = Tournament.query.filter(Tournament.deleted == False, Tournament.complete == False)
     else:
         # tournaments = Tournament.query.filter(Tournament.deleted == False, Tournament.region == user.region)
-        tournaments = Tournament.query.filter(Tournament.creator_id == uid, Tournament.deleted == False)
+        tournaments = Tournament.query.filter(Tournament.creator_id == uid, Tournament.deleted == False, Tournament.complete == False, Tournament.user_region == user.region)
     response = {}
     response["tournaments"]= [tournament.to_dict() for tournament in tournaments]
+    print(response["tournaments"])
+    response["code"] = 0
+    return jsonify(response)
+
+@app.route('/getCompletedTournaments', methods=["POST"])
+@cross_origin()
+def getCompletedTournaments():
+    data = request.get_json()
+    uid = data["uid"]
+    user = User.query.get(uid)
+    if user.role.lower() == "Head".lower() or user.role.lower() == "root".lower():
+        tournaments = Tournament.query.filter(Tournament.deleted == False, Tournament.complete == True)
+    else:
+        tournaments = Tournament.query.filter(Tournament.creator_id == uid, Tournament.deleted == False, Tournament.complete == True, Tournament.user_region == user.region)
+    response = {}
+    response["tournaments"] = [tournament.to_dict() for tournament in tournaments]
     response["code"] = 0
     return jsonify(response)
 
@@ -417,7 +466,7 @@ def getDeltedTournaments():
     # uid = get_jwt_identity()
     # head admin, all tournaments - deleted: true
     user = User.query.get(uid)
-    tournaments = Tournament.query.filter(Tournament.deleted == True, Tournament.creator_id == uid)
+    tournaments = Tournament.query.filter(Tournament.deleted == True)
     response["tournaments"]= [tournament.to_dict() for tournament in tournaments]
     response["code"] = 0
     # if user.role.lower() == "Head".lower():
@@ -464,6 +513,8 @@ def getRegions():
     round_id = int(args["round_id"])
     # round_num = args["round_num"]
     tournament = Tournament.query.get(tournament_id)
+    engine = create_engine(tournament.db_url)
+    Session = sessionmaker(engine)
     response = {}
     response["tournament"] = tournament.to_dict()
     if round_id >= 4:
@@ -471,7 +522,10 @@ def getRegions():
     else:
         response["regions"] = tournament.regions
     response["code"] = 0
-    return jsonify(response)
+    with Session() as session:
+        round = session.query(Round).get(round_id)
+        response["round"] = round.to_dict()
+        return jsonify(response)
 
 @app.route('/getTeams', methods=["POST"])
 @cross_origin()
@@ -513,7 +567,7 @@ def getJudges():
 @app.route('/getScores', methods=["POST"])
 @cross_origin()
 def getScores():
-    print("Getting Teams...")
+    print("Getting Scores...")
     args = request.get_json()
     tournament_id = args["tournament_id"]
     response = {}
@@ -527,6 +581,22 @@ def getScores():
     response["code"] = 0
     return jsonify(response)
 
+@app.route('/getScoreOverview', methods=["POST"])
+@cross_origin()
+def getScoreOverview():
+    args = request.get_json()
+    tournament_id = args["tournament_id"]
+    round_id = args["round_id"]
+    response = {}
+    tournament = Tournament.query.get(tournament_id)
+    round = Round.query.get(round_id)
+    engine = create_engine(tournament.db_url)
+    Session = sessionmaker(engine)
+    with Session() as session:
+        matches = session.query(Match).filter(Match.round_id == round_id)
+        response["matches"] = [match.to_dict() for match in matches]
+    response["code"] = 0
+    return jsonify(response)
 
 @app.route('/rankTeams', methods=["POST"])
 @cross_origin()
@@ -653,9 +723,10 @@ def CreateTournament():
         uid = args["uid"]
         name = args["name"]
         # or get token from the request header and decode to get uid
-        tournament = Tournament(creator_id=uid, name=name)
+        user = User.query.get(uid)
+        tournament = Tournament(creator_id=uid, name=name, user_region=user.region, complete=False)
         db.session.add(tournament)
-        db.session.commit()
+        db.session.flush()
         tournament = Database.create_tournament_db(tournament)
         db.session.commit()
         response["tournament"] = tournament.to_dict()
@@ -795,8 +866,9 @@ def updateTeamRosterPlaintiff():
 @cross_origin()
 def changeJudgeAssignment():
     args = request.get_json()
-    tournament_id = args("tournament_id")
-    new_match = args["new_match"]
+    tournament_id = args["tournament_id"]
+    new_match = args["match"]
+    # print(new_match)
     tournament = Tournament.query.get(tournament_id)
     response = changeJudge(tournament, new_match)
     return jsonify(response)
