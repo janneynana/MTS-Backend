@@ -246,12 +246,10 @@ def createRound1(tournament):
         session.flush()
         round.bye_teams = bye_teams
         for match in matches:
-            # if match.zoom_id:
-            #     deleteMeeting(match.zoom_id)
-            # created, id, link = createMeeting(match)
-            # if created:
-            #     match.zoom_id = id
-            #     match.zoom_link = link
+            created, id, link = createMeeting(match)
+            if created:
+                match.zoom_id = id
+                match.zoom_link = link
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)
@@ -351,10 +349,10 @@ def createRound2(tournament):
         for match in matches:
             # if match.zoom_id:
             #     deleteMeeting(match.zoom_id)
-            # created, id, link = createMeeting(match)
-            # if created:
-            #     match.zoom_id = id
-            #     match.zoom_link = link
+            created, id, link = createMeeting(match)
+            if created:
+                match.zoom_id = id
+                match.zoom_link = link
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)
@@ -438,12 +436,10 @@ def createRound3(tournament):
             # schedules[region] = formatSchedule(schedule, matches, session)
         round.bye_teams = bye_teams
         for match in all_matches:
-            # if match.zoom_id:
-            #     deleteMeeting(match.zoom_id)
-            # created, id, link = createMeeting(match)
-            # if created:
-            #     match.zoom_id = id
-            #     match.zoom_link = link
+            created, id, link = createMeeting(match)
+            if created:
+                match.zoom_id = id
+                match.zoom_link = link
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
             session.add(teamRoster)   
@@ -519,10 +515,10 @@ def createStateFinal(tournament):
             # print(match.id, match.team_names)
             # if match.zoom_id:
             #     deleteMeeting(match.zoom_id)
-            # created, id, link = createMeeting(match)
-            # if created:
-            #     match.zoom_id = id
-            #     match.zoom_link = link
+            created, id, link = createMeeting(match)
+            if created:
+                match.zoom_id = id
+                match.zoom_link = link
             assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
@@ -577,10 +573,10 @@ def createChampionshipTrial(tournament):
         session.flush()
         # if match.zoom_id:
         #         deleteMeeting(match.zoom_id)
-        # created, id, link = createMeeting(match)
-        # if created:
-        #     match.zoom_id = id
-        #     match.zoom_link = link
+        created, id, link = createMeeting(match)
+        if created:
+            match.zoom_id = id
+            match.zoom_link = link
         teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
         session.add(teamRoster)
