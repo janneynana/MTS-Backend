@@ -120,7 +120,7 @@ def saveJudges(tournament, data):
                 for i in range(len(judge.preferred_teams)):
                     t = judge.preferred_teams[i]
                     judge.preferred_teams[i] = t.strip()
-                    team = session.query(Team).filter(Team.team_name.lower() == t.lower()).all()
+                    team = session.query(Team).filter(Team.team_name == t).all()
                     if team:
                         judge.preferredTeams.append(team[0])
             
@@ -131,7 +131,7 @@ def saveJudges(tournament, data):
                 for i in range(len(judge.unpreferred_teams)):
                     t = unpreferred_teams[i]
                     judge.unpreferred_teams[i] = t.strip()
-                    team = session.query(Team).filter(Team.team_name.lower() == t.lower()).all()
+                    team = session.query(Team).filter(Team.team_name == t).all()
                     if team:
                         judge.unpreferredTeams.append(team[0])
         session.commit()
@@ -244,12 +244,16 @@ def saveScores(tournament, data, round_num):
             if len(scoreSheets) == 2:
                 plaintiff_new_score = round((scoreSheets[0].plaintiff_score + scoreSheets[1].plaintiff_score)/2)
                 defense_new_score = round((scoreSheets[0].defense_score + scoreSheets[1].defense_score)/2)
+                plaintiff_score.total_points += plaintiff_new_score
+                defense_score.total_points += defense_new_score
                 if plaintiff_new_score > defense_new_score:
                     plaintiff_score.ballots += 1
                     plaintiff.ballots += 1
                 else:
                     defense.ballots += 1
                     defense_score.ballots += 1
+            match.defense_score = defense_score.total_points
+            match.plaintiff_score = plaintiff_score.total_points
             plaintiff_score.point_differential = plaintiff_score.total_points - defense_score.total_points
             defense_score.point_differential = defense_score.total_points - plaintiff_score.total_points
             team1.point_differential = defense_score.point_differential

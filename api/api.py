@@ -3,9 +3,7 @@ File that handles GET/POST Requests from FrontEnd
 """
 from datetime import *
 import os
-from pydoc import resolve
 import shutil
-from urllib import response
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
@@ -14,15 +12,15 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt, get_jwt
 from flask_cors import CORS, cross_origin
 from flask_migrate import Migrate
 
-from .Account import *
-from .Password import *
-from .models import *
-from .config import Config
-from .Database import Database
-from .fileUtils import *
-from .schedules import *
-from .Zoom import *
-from .JudgeReassignment import *
+from Account import *
+from Password import *
+from models import *
+from config import Config
+from Database import Database
+from fileUtils import *
+from schedules import *
+from Zoom import *
+from JudgeReassignment import *
 
 def create_app(config):
     app = Flask(__name__)
