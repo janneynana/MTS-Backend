@@ -236,8 +236,8 @@ def saveScores(tournament, data, round_num):
             # print(match.id, match.plaintiff_team_id, match.defense_team_id)
             plaintiff_score = team_score_dic[match.plaintiff_team_id]
             defense_score = team_score_dic[match.defense_team_id]
-            team1 = team_dict.pop(match.teams[0].team_name)
-            team2 = team_dict.pop(match.teams[1].team_name)
+            team1 = team_dict.pop(match.teams[0].team_name.lower())
+            team2 = team_dict.pop(match.teams[1].team_name.lower())
             # Two Judge Panel
             scoreSheets = match.scoreSheets
             if len(scoreSheets) == 2:
