@@ -247,10 +247,10 @@ def createRound1(tournament):
         for match in matches:
             # if match.zoom_id:
             #     deleteMeeting(match.zoom_id)
-            created, id, link = createMeeting(match)
-            if created:
-                match.zoom_id = id
-                match.zoom_link = link
+            # created, id, link = createMeeting(match)
+            # if created:
+            #     match.zoom_id = id
+            #     match.zoom_link = link
             assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
@@ -350,10 +350,10 @@ def createRound2(tournament):
         for match in matches:
             # if match.zoom_id:
             #     deleteMeeting(match.zoom_id)
-            created, id, link = createMeeting(match)
-            if created:
-                match.zoom_id = id
-                match.zoom_link = link
+            # created, id, link = createMeeting(match)
+            # if created:
+            #     match.zoom_id = id
+            #     match.zoom_link = link
             assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
@@ -439,10 +439,10 @@ def createRound3(tournament):
         for match in all_matches:
             # if match.zoom_id:
             #     deleteMeeting(match.zoom_id)
-            created, id, link = createMeeting(match)
-            if created:
-                match.zoom_id = id
-                match.zoom_link = link
+            # created, id, link = createMeeting(match)
+            # if created:
+            #     match.zoom_id = id
+            #     match.zoom_link = link
             assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
@@ -519,10 +519,10 @@ def createStateFinal(tournament):
             # print(match.id, match.team_names)
             # if match.zoom_id:
             #     deleteMeeting(match.zoom_id)
-            created, id, link = createMeeting(match)
-            if created:
-                match.zoom_id = id
-                match.zoom_link = link
+            # created, id, link = createMeeting(match)
+            # if created:
+            #     match.zoom_id = id
+            #     match.zoom_link = link
             assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
             teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
@@ -577,10 +577,10 @@ def createChampionshipTrial(tournament):
         assignJudge(presiding_judges, presiding_preferred, presiding_uppreferred, scoring_judges, match)
         # if match.zoom_id:
         #         deleteMeeting(match.zoom_id)
-        created, id, link = createMeeting(match)
-        if created:
-            match.zoom_id = id
-            match.zoom_link = link
+        # created, id, link = createMeeting(match)
+        # if created:
+        #     match.zoom_id = id
+        #     match.zoom_link = link
         teamRoster = TeamRoster(match_id=match.id, defense_team=match.team_names[0], plaintiff_team=match.team_names[1],
                                     defense_members=match.teams[0].members, plaintiff_members=match.teams[1].members)
         session.add(teamRoster)
@@ -765,7 +765,7 @@ def hasMet(team1, team2, judge):
 def addMetTeam(team1, team2, judge):
     if judge.teams_met:
         judge.teams_met.append(team1.id)
-        judge.teams_met.append()(team2.id)
+        judge.teams_met.append(team2.id)
     else:
         judge.teams_met = [team1.id, team2.id]
         flag_modified(judge, "teams_met")

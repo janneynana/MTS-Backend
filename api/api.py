@@ -686,6 +686,7 @@ def createschedules():
 @cross_origin()
 def getschedule():
     args = request.get_json()
+    print(args)
     tournament_id = args["tournament_id"]
     round_num = int(args["round_num"])
     if round_num >= 4:

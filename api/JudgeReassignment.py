@@ -112,7 +112,6 @@ def changeJudge(tournament, new_match):
             new_scoring = new_scoring_judges[i]
             print(i, new_scoring)
             new_scoring_judge = session.query(Judge).filter(Judge.name.ilike(new_scoring))[0]
-            print(to_dict(new_scoring_judge))
             old_scoring_judge = session.query(Judge).get(old_scoring_judge_ids[i])
             if new_scoring in old_scoring_judges:
                 new_scoring_judge.match_id = match.id
@@ -138,6 +137,7 @@ def changeJudge(tournament, new_match):
                 else:
                     new_scoring_judge.match_id = match.id
                     match.scoring_judge_names.append(new_scoring)
+                    print("match.scoring_judge_names", match.scoring_judge_names)
                     match.scoring_judge_ids.append(new_scoring_judge.id)
                     if old_scoring_judge:
                         old_scoring_judge.match_id = -1
@@ -145,6 +145,7 @@ def changeJudge(tournament, new_match):
                     addMetTeam(team1, team2, new_scoring_judge)
         flag_modified(match, "scoring_judge_names")
         flag_modified(match, "scoring_judge_ids")
+        print()
         print("new: ", formatMatchJudges(match))
         session.commit()
         
