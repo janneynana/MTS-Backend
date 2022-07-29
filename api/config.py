@@ -3,7 +3,7 @@ from datetime import timedelta
 class Config(object):
     DEBUG = True
     TESTING = True
-    PORT = "8000"
+    PORT = "5000"
     
     # Set the secret key
     # This is implemented on top of cookies for you and signs the cookies cryptographically. 
