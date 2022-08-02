@@ -916,5 +916,31 @@ def changeJudgeAssignment():
     response = changeJudge(tournament, new_match)
     return jsonify(response)
 
+@app.route('/editTeam', methods=["POST"])
+@cross_origin()
+def EditTeam():
+    print("Editing Team...")
+    args = request.get_json()
+    tournament_id = args["tournament_id"]
+    team_id = args["team_id"]
+    new_name = args["name"]
+    new_region = args["region"]
+    new_members = args["members"]
+    response = {}
+    tournament = Tournament.query.get(tournament_id)
+    engine = create_engine(tournament.db_url)
+    Session = sessionmaker(engine)
+    with Session() as session:
+        team = session.query(Team).get(team_id)
+        team.name = new_name
+        team.region = new_region
+        members = list(new_members.split(","))
+        for i in range(len(members)):
+            members[i] = members[i].strip()
+        team.members = members
+        response["msg"] = "Success"
+    response["code"] = 0
+    return jsonify(response)
+
 if __name__ == "__main__":
     app.run(host="localhost", port=5000, debug=True)
