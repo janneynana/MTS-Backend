@@ -12,8 +12,8 @@ from Database import *
 
 
 # Enter your API key and your API secret
-API_KEY = 'I3L5b4rMSgWRkLH9gEwxNA' # NtqNTBUDT5q0QLKeLWgPyA
-API_SEC = 'XBB3jOruq8TXxtXN7yMmbyEwOL5PLvhByYKg'
+API_KEY = 'NtqNTBUDT5q0QLKeLWgPyA' # 'I3L5b4rMSgWRkLH9gEwxNA'
+API_SEC = 'UjjT0pxo10w8YmzaO5ppHd41OuRH6tfcnove' #'XBB3jOruq8TXxtXN7yMmbyEwOL5PLvhByYKg'
 
 # create a function to generate a token
 # using the pyjwt library
