@@ -160,13 +160,12 @@ def sendInvite():
         data = request.get_json()
         print(data['email'])
         account = Account(data['email'], "", "", "", "", "", "") # account = User(data['email'], "", "", "")
-        unique = account.already_exists()
+        unique = User.query.filter(User.email == data["email"]).first()
         
         # same thing as "unique = account.already_exists()"
         # exist_account = User.query.filter_by(email=data['email']).first()
         # if exist_account is not None:
         
-        print("unique " + str(unique))
         if unique:
             return {"message": "Error: Account Already Exists", "status": 502}
         details = account.initialize_account()
@@ -199,10 +198,8 @@ def createAccount():
         isValid = account.verify_account()
         if isValid == 0:
             return {"message": "Account not Found", "status": 404}
-        valid_account = Account(data['email'], '', '', '', '', '', '')
-        already_created = valid_account.already_exists()
-        print(already_created[0][2])
-        if already_created[0][2] != "":
+        already_created = User.query.filter(User.email == data["email"]).first()
+        if already_created:
             return {"message": "Error: account already created", "status": 502}
         create = account.create_account()
     return {"message": "Account created", "status": 200}
@@ -229,10 +226,10 @@ def editRole():
         data = request.get_json()
         print(data['email'])
         account = Account(data['email'], "", "", "", "", "", "")
-        get_account = account.already_exists()
+        get_account = User.query.filter(User.email == data["email"]).first()
         if not get_account:
             return {"message": "Account not real", "status": 502}
-        role = get_account[0][4]
+        role = get_account.role
         result = None
         #print(role)
         if role == 'root':
@@ -323,12 +320,11 @@ def getEmail() :
     if request.method == "POST":
         data = request.get_json()
         print(data)
-        account = Account(data['email'], "", "", "", "", "", "")
-        get_account = account.already_exists()
+        get_account = User.query.filter(User.email == data["email"]).first()
         print(get_account)
         if not get_account:
             return {"message": "Account can not be found", "status": 500}
-        return {"message": "Account found", "question": get_account[0][6], "status": 200}
+        return {"message": "Account found", "question": get_account.security_question, "status": 200}
 
 
 @app.route('/updateAccount', methods=["POST"])

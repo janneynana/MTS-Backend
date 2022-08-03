@@ -59,12 +59,16 @@ class Account:
     """
 
     def verify_account(self):
+        # NOT CLOSED
         connection = self.initialize()
         cursor = connection.cursor()
         cursor.execute("SELECT email, \"authCode\" FROM account WHERE email='{0}' AND \"authCode\"='{1}';"
                        .format(self.email, self.authCode))
         print(cursor.rowcount)
-        return cursor.rowcount
+        row_count = cursor.rowcount
+        cursor.close()
+        connection.close()
+        return row_count
 
 
     def create_account(self):
@@ -86,6 +90,7 @@ class Account:
     """
 
     def already_exists(self):
+        # NOT CLOSED
         print("Checking to see if account already exists")
         connection = self.initialize()
         cursor = connection.cursor()
