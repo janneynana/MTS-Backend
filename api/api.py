@@ -591,6 +591,27 @@ def getTeams():
     response["code"] = 0
     return jsonify(response)
 
+@app.route('/getTeam', methods=["POST"])
+@cross_origin()
+def getTeam():
+    print("Getting Team...")
+    args = request.get_json()
+    tournament_id = args["tournament_id"]
+    name = args["team_name"]
+    response = {}
+    # round_num = args["round_num"]
+    tournament = Tournament.query.get(tournament_id)
+    engine = create_engine(tournament.db_url)
+    Session = sessionmaker(engine)
+    with Session() as session:
+        teams = session.query(Team).filter(Team.team_name == name).all()
+        if teams:
+            response["team"] = [team.to_dict() for team in teams]
+            response["code"] = 0
+        else:
+            response["code"] = -1
+    return jsonify(response)
+
 @app.route('/getJudges', methods=["POST"])
 @cross_origin()
 def getJudges():
