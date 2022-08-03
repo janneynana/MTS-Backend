@@ -114,8 +114,6 @@ def Login():
         pwd = args["password"]
         hashed = Password(pwd)
         pwd = hashed.password
-        print(pwd)
-        ### code to verify
         user = User.query.filter_by(email=email).first()
         if user is None:
             response = {"code": -1, "msg": "Email doesn't exists!"}
@@ -159,8 +157,7 @@ def sendInvite():
     if request.method == "POST":
         data = request.get_json()
         print(data['email'])
-        account = Account(data['email'], "", "", "", "", "", "") # account = User(data['email'], "", "", "")
-        unique = User.query.filter(User.email == data["email"]).first()
+        unique = User.query.filter_by(email=data['email']).first()
         
         # same thing as "unique = account.already_exists()"
         # exist_account = User.query.filter_by(email=data['email']).first()
@@ -168,17 +165,13 @@ def sendInvite():
         
         if unique:
             return {"message": "Error: Account Already Exists", "status": 502}
-        details = account.initialize_account()
-        print(details)
-        
-        # authcode = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        # account.authCode = authcode
-        # Save the account to the database
-        # db.session.add(account)
-        # db.session.commit()
-        
-        if details[1] == 1:
-            return {"message": "Account Created Succesfully", "authCode": details[0], "status": 200}
+        authCode = User.query.get(0).authCode
+        account = User(email=data['email'])
+        if authCode:
+            account.authCode = authCode
+            db.session.add(account)
+            db.session.commit()
+            return {"message": "Account Created Succesfully", "authCode":authCode, "status": 200}
         else:
             return {"message": "Error: Error creating the account", "status": 503}
 
@@ -187,22 +180,26 @@ def sendInvite():
 @cross_origin()
 def createAccount():
     if request.method == "POST":
-        print("hey")
         data = request.get_json()
         print(data)
         password = Password(data['password'])
         secA = Password(data['secA'])
-        account = Account(data['email'], password.password, data['authCode'], 'root', data['region'],
-                          data['secQ'], secA.password)
-        print(account)
-        isValid = account.verify_account()
-        if isValid == 0:
+        # account = Account(data['email'], password.password, data['authCode'], 'root', data['region'],
+        #                   data['secQ'], secA.password)
+        print(password.password)
+        isValid = User.query.filter(User.email==data["email"], User.authCode==data["authCode"]).first()
+        if not isValid:
             return {"message": "Account not Found", "status": 404}
-        already_created = User.query.filter(User.email == data["email"]).first()
-        if already_created:
+        if isValid.password:
             return {"message": "Error: account already created", "status": 502}
-        create = account.create_account()
-    return {"message": "Account created", "status": 200}
+        isValid.password = password.password
+        isValid.authCode=data['authCode']
+        isValid.role="admin"
+        isValid.region=data['region']
+        isValid.security_question=data['secQ']
+        isValid.answer=secA.password
+        db.session.commit()
+        return {"message": "Account created", "status": 200}
 
 
 
@@ -211,12 +208,13 @@ def createAccount():
 def deleteAccount():
     if request.method == "POST":
         data = request.get_json()
-        account = Account(data['email'], "", "", "", "", "", "")
-        response = account.delete_account()
-        print(response)
-        if response == 0:
+        account = User.query.filter(User.email==data["email"]).first()
+        try:
+            db.session.delete(account)
+            db.session.commit()
+            return {"message": "Account deleted Successfully", "status": 200}
+        except:
             return {"message": "Account not real", "status": 502}
-        return {"message": "Account deleted Successfully", "status": 200}
 
 
 @app.route('/editRole', methods=["POST"])
@@ -225,27 +223,30 @@ def editRole():
     if request.method == "POST":
         data = request.get_json()
         print(data['email'])
-        account = Account(data['email'], "", "", "", "", "", "")
-        get_account = User.query.filter(User.email == data["email"]).first()
-        if not get_account:
+        account = User.query.filter(User.email==data["email"]).first()
+        if not account:
             return {"message": "Account not real", "status": 502}
-        role = get_account.role
+        role = account.role
         result = None
         #print(role)
         if role == 'root':
-            admins = account.get_admins()
-            if admins <= 3:
+            admins = User.query.filter(User.role == "root").all()
+            if len(admins) <= 3:
                 return {"message": "Not enough admins remaining", "role": "root", "status": 504}
-            result = account.edit_role('admin')
-            if result == 1:
+            account.role = 'admin'
+            try:
+                db.session.add(account)
+                db.session.commit()
                 return {"message": "Role changed succesfully", "role": "admin", "status": 200}
-            if result == 0:
+            except:
                 return {"message": "Error in changing Roles", "role": "admin", "status": 503}
         else:
-            result = account.edit_role('root')
-            if result == 1:
+            account.role = 'root'
+            try:
+                db.session.add(account)
+                db.session.commit()
                 return {"message": "Role changed succesfully", "role": "root", "status": 200}
-            if result == 0:
+            except:
                 return {"message": "Error in changing Roles", "role": "root", "status": 503}
     return("IM HERE")
 
@@ -255,11 +256,13 @@ def setCode():
     if request.method == "POST":
         data = request.get_json()
         print(data['code'])
-        account = Account("CODE", "", "", "", "", "", "")
-        code = account.set_code(data['code'])
-        if code == 1:
+        account = User.query.get(0)
+        account.authCode = data['code']
+        try:
+            db.session.commit()
             return {"message": "AuthCode Changed Succesfully", "status": 200}
-    return {"message": "AuthCode Changed Unsuccesfully", "status": 400}
+        except:
+            return {"message": "AuthCode Changed Unsuccesfully", "status": 400}
 
 @app.route('/editRegion', methods=["POST"])
 @cross_origin()
@@ -267,12 +270,13 @@ def editRegion():
     if request.method == "POST":
         data = request.get_json()
         print(data)
-        account = Account(data['email'], "", "", "", data['region'], "", "")
-        reg = account.edit_region()
-        print(reg)
-        if reg == 1:
+        account = User.query.filter(User.email==data['email']).first()
+        account.region = data['region']
+        try:
+            db.session.commit()
             return {"message": "region Changed Succesfully", "status": 200}
-        return {"message": "region Changed Unsuccesfully", "status": 400}
+        except:
+            return {"message": "region Changed Unsuccesfully", "status": 400}
 
 @app.route('/changePass', methods=["POST"])
 @cross_origin()
@@ -281,17 +285,18 @@ def changePass():
         data = request.get_json()
         print(data)
         old = Password(data['oldPass'])
-        passAcc = Account(data['email'], "", "", "", "", "", "")
-        currPass = passAcc.get_pass(data['email'])
+        account = User.query.filter(User.email==data['email']).first()
+        currPass = account.password
         print(currPass, old.password)
         if old.password != currPass:
             return {"message": "OldPass does not match", "status": 501}
         new = Password(data['newPass'])
-        account = Account(data['email'], new.password, "", "", "", "", "")
-        ret = account.change_pass()
-        if ret == 1:
+        account.password = new.password
+        try:
+            db.session.commit()
             return {"message": "password Changed Succesfully", "status": 200}
-        return {"message": "Password Changed Unsuccesfully", "status": 502}
+        except:
+            return {"message": "Password Changed Unsuccesfully", "status": 502}
 
 @app.route('/forgetPass', methods=["POST"])
 @cross_origin()
@@ -301,16 +306,16 @@ def forgetPass():
         print(data)
         response = Password(data['response'])
         print(response.password)
-        password = Password(data['password']).password
-        account = Account(data['email'], password, "", "", "", "", response.password)
-        valid = account.get_answer()
-        if valid != response.password:
+        new_password = Password(data['password']).password
+        account = User.query.filter(User.email==data['email']).first()
+        if account.answer != response.password:
             return {"message": "Response not correct", "status": 500}
-        reset = account.change_pass()
-        if reset == 1:
+        try:
+            account.password = new_password
+            db.session.commit()
             return {"message": "Password reset", "status": 200}
-        return {"message": "Password not reset", "status": 501}
-
+        except:
+            return {"message": "Password not reset", "status": 501}
     return "valid"
 
 
@@ -320,18 +325,11 @@ def getEmail() :
     if request.method == "POST":
         data = request.get_json()
         print(data)
-        get_account = User.query.filter(User.email == data["email"]).first()
+        get_account = User.query.filter_by(email=data['email']).first()
         print(get_account)
         if not get_account:
             return {"message": "Account can not be found", "status": 500}
         return {"message": "Account found", "question": get_account.security_question, "status": 200}
-
-
-@app.route('/updateAccount', methods=["POST"])
-@cross_origin()
-def UpdateAccount():
-    if request.method == "POST":
-        args = request.get_json()
 
 
 @app.route('/uploadteam', methods=["POST"])
@@ -587,25 +585,30 @@ def getTeams():
     response["code"] = 0
     return jsonify(response)
 
-@app.route('/getTeam', methods=["POST"])
+@app.route('/editTeam', methods=["POST"])
 @cross_origin()
-def getTeam():
-    print("Getting Team...")
+def EditTeam():
+    print("Editing Team...")
     args = request.get_json()
     tournament_id = args["tournament_id"]
-    name = args["team_name"]
+    team_id = args["team_id"]
+    new_name = args["name"]
+    new_region = args["region"]
+    new_members = args["members"]
     response = {}
-    # round_num = args["round_num"]
     tournament = Tournament.query.get(tournament_id)
     engine = create_engine(tournament.db_url)
     Session = sessionmaker(engine)
     with Session() as session:
-        teams = session.query(Team).filter(Team.team_name == name).all()
-        if teams:
-            response["team"] = [team.to_dict() for team in teams]
-            response["code"] = 0
-        else:
-            response["code"] = -1
+        team = session.query(Team).get(team_id)
+        team.name = new_name
+        team.region = new_region
+        members = list(new_members.split(","))
+        for i in range(len(members)):
+            members[i] = members[i].strip()
+        team.members = members
+        response["msg"] = "Success"
+    response["code"] = 0
     return jsonify(response)
 
 @app.route('/getJudges', methods=["POST"])
@@ -933,30 +936,24 @@ def changeJudgeAssignment():
     response = changeJudge(tournament, new_match)
     return jsonify(response)
 
-@app.route('/editTeam', methods=["POST"])
+@app.route('/getTeam', methods=["POST"])
 @cross_origin()
-def EditTeam():
-    print("Editing Team...")
+def getTeam():
+    print("Getting Team...")
     args = request.get_json()
     tournament_id = args["tournament_id"]
-    team_id = args["team_id"]
-    new_name = args["name"]
-    new_region = args["region"]
-    new_members = args["members"]
+    name = args["team_name"]
     response = {}
     tournament = Tournament.query.get(tournament_id)
     engine = create_engine(tournament.db_url)
     Session = sessionmaker(engine)
     with Session() as session:
-        team = session.query(Team).get(team_id)
-        team.name = new_name
-        team.region = new_region
-        members = list(new_members.split(","))
-        for i in range(len(members)):
-            members[i] = members[i].strip()
-        team.members = members
-        response["msg"] = "Success"
-    response["code"] = 0
+        teams = session.query(Team).filter(Team.team_name == name).all()
+        if teams:
+            response["team"] = [team.to_dict() for team in teams]
+            response["code"] = 0
+        else:
+            response["code"] = -1
     return jsonify(response)
 
 if __name__ == "__main__":

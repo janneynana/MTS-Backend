@@ -345,7 +345,7 @@ def removeJudges(tournament):
     engine = create_engine(tournament.db_url)
     Session = sessionmaker(engine)
     with Session() as session:
-        session.query(Team).delete()
+        session.query(Judge).delete()
         session.commit()
 
 if __name__ == "__main__":
